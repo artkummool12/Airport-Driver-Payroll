@@ -1,0 +1,6 @@
+{
+  "name": "Airport Driver Payroll",
+  "description": "An application for managing and processing airport driver payroll, tracking jobs, calculating rates, and syncing with Supabase SQL Database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
