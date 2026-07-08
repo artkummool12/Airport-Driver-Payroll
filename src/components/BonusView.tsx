@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BonusEntry, Job } from '../types';
+import { BonusEntry, Job, getCleanJobId } from '../types';
 import { Plus, Edit2, Trash2, Award, Search, X } from 'lucide-react';
 
 interface BonusViewProps {
@@ -110,7 +110,7 @@ export default function BonusView({ bonuses, jobs, onSaveBonus, onDeleteBonus }:
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 font-mono">{bonus.id}</span>
-                    <h4 className="text-xs font-black text-slate-800 font-mono mt-0.5">รหัสงาน: {bonus.jobId}</h4>
+                    <h4 className="text-xs font-black text-slate-800 font-mono mt-0.5">รหัสงาน: {getCleanJobId(bonus.jobId)}</h4>
                   </div>
                 </div>
 
@@ -188,7 +188,7 @@ export default function BonusView({ bonuses, jobs, onSaveBonus, onDeleteBonus }:
                 >
                   {jobs.map(j => (
                     <option key={j.id} value={j.id}>
-                      {j.id} ({j.route} - {j.vehicleCode})
+                      {getCleanJobId(j.id)} ({j.route} - {j.vehicleCode} - {j.date})
                     </option>
                   ))}
                 </select>

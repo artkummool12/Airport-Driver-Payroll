@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { UserAccount, Job, VehicleRate, BonusEntry, PenaltyEntry, AppTab } from './types';
 import SpreadsheetSync from './components/SpreadsheetSync';
@@ -23,7 +23,9 @@ import {
   Settings,
   Database,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 
@@ -105,6 +107,27 @@ const mapPenaltyToDB = (p: PenaltyEntry) => ({
 export default function App() {
   // Navigation (Default to dashboard)
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
+  const mobileNavRef = useRef<HTMLDivElement>(null);
+
+  const scrollMobileNav = (direction: 'left' | 'right') => {
+    if (mobileNavRef.current) {
+      const scrollAmount = 180;
+      mobileNavRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handleTabChange = (tab: AppTab) => {
+    setActiveTab(tab);
+    setTimeout(() => {
+      const activeEl = document.getElementById(`mobile-tab-${tab}`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }, 50);
+  };
 
   // Sync / Supabase State
   const [isSyncing, setIsSyncing] = useState(false);
@@ -486,7 +509,7 @@ export default function App() {
       </header>
 
       {/* Main Layout Area */}
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-6">
         {/* Spreadsheet Status Header Card */}
         <SpreadsheetSync
           isSyncing={isSyncing}
@@ -494,11 +517,11 @@ export default function App() {
           onRefresh={() => loadSupabaseData()}
         />
 
-        {/* 100% Thai Navigation Menu */}
-        <div className="flex border-b border-slate-200 mb-6 bg-white rounded-xl shadow-xs border border-slate-100 p-1.5 gap-1 overflow-x-auto scrollbar-none">
+        {/* 100% Thai Navigation Menu (Desktop) */}
+        <div className="hidden md:flex flex-wrap border-b border-slate-200 mb-6 bg-white rounded-xl shadow-xs border border-slate-100 p-2 gap-2 w-full justify-start">
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'dashboard'
                 ? 'bg-emerald-600 text-slate-950 shadow-xs'
                 : 'text-slate-600 hover:text-emerald-600 hover:bg-slate-50'
@@ -506,12 +529,12 @@ export default function App() {
             id="tab-dashboard"
           >
             <LayoutDashboard className="h-4 w-4" />
-            แผงควบคุมหลัก (Dashboard)
+            แผงควบคุมหลัก
           </button>
 
           <button
             onClick={() => setActiveTab('line-import')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
               activeTab === 'line-import'
                 ? 'bg-emerald-600 text-slate-950 shadow-xs'
                 : 'text-slate-600 hover:text-emerald-600 hover:bg-slate-50'
@@ -519,12 +542,12 @@ export default function App() {
             id="tab-line-import"
           >
             <Clipboard className="h-4 w-4" />
-            นำเข้าจาก LINE (Import)
+            นำเข้าจาก LINE
           </button>
 
           <button
             onClick={() => setActiveTab('jobs')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'jobs'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
@@ -532,12 +555,12 @@ export default function App() {
             id="tab-jobs"
           >
             <Briefcase className="h-4 w-4" />
-            ตารางเที่ยววิ่ง (Jobs) ({jobs.length})
+            ตารางเที่ยววิ่ง ({jobs.length})
           </button>
 
           <button
             onClick={() => setActiveTab('rates')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'rates'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
@@ -545,12 +568,12 @@ export default function App() {
             id="tab-rates"
           >
             <Percent className="h-4 w-4" />
-            อัตราค่ารถ (VehicleRates)
+            อัตราค่ารถ
           </button>
 
           <button
             onClick={() => setActiveTab('bonus')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'bonus'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
@@ -558,12 +581,12 @@ export default function App() {
             id="tab-bonus"
           >
             <Award className="h-4 w-4" />
-            เงินบวกเพิ่ม (Bonus)
+            เงินบวกเพิ่ม
           </button>
 
           <button
             onClick={() => setActiveTab('penalty')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'penalty'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
@@ -571,12 +594,12 @@ export default function App() {
             id="tab-penalty"
           >
             <AlertTriangle className="h-4 w-4" />
-            รายการค่าปรับ (Penalty)
+            รายการค่าปรับ
           </button>
 
           <button
             onClick={() => setActiveTab('reports')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'reports'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
@@ -589,7 +612,7 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'users'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
@@ -597,12 +620,12 @@ export default function App() {
             id="tab-users"
           >
             <Users className="h-4 w-4" />
-            รายชื่อพนักงาน (Users)
+            รายชื่อพนักงาน
           </button>
 
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'settings'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
@@ -610,7 +633,153 @@ export default function App() {
             id="tab-settings"
           >
             <Settings className="h-4 w-4" />
-            โครงสร้างคู่มือระบบ
+            คู่มือระบบ
+          </button>
+        </div>
+
+        {/* 100% Thai Navigation Menu (Mobile Bottom Nav) */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-2.5 flex items-center gap-1 z-50">
+          {/* Left Arrow Button */}
+          <button
+            onClick={() => scrollMobileNav('left')}
+            className="flex items-center justify-center h-8 w-8 bg-slate-50 border border-slate-100 rounded-lg text-slate-500 hover:text-slate-900 active:scale-95 transition-all shrink-0 cursor-pointer"
+            title="เลื่อนซ้าย"
+            id="mobile-nav-scroll-left"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {/* Scrollable container */}
+          <div
+            ref={mobileNavRef}
+            className="flex-grow flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-none scroll-smooth touch-pan-x py-0.5"
+          >
+            <button
+              onClick={() => handleTabChange('dashboard')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-emerald-600 text-slate-950 shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-dashboard"
+            >
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              แผงควบคุม
+            </button>
+
+            <button
+              onClick={() => handleTabChange('line-import')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'line-import'
+                  ? 'bg-emerald-600 text-slate-950 shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-line-import"
+            >
+              <Clipboard className="h-4 w-4 shrink-0" />
+              นำเข้า LINE
+            </button>
+
+            <button
+              onClick={() => handleTabChange('jobs')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'jobs'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-jobs"
+            >
+              <Briefcase className="h-4 w-4 shrink-0" />
+              ตารางวิ่งงาน ({jobs.length})
+            </button>
+
+            <button
+              onClick={() => handleTabChange('rates')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'rates'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-rates"
+            >
+              <Percent className="h-4 w-4 shrink-0" />
+              อัตราค่ารถ
+            </button>
+
+            <button
+              onClick={() => handleTabChange('bonus')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'bonus'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-bonus"
+            >
+              <Award className="h-4 w-4 shrink-0" />
+              เงินบวกเพิ่ม
+            </button>
+
+            <button
+              onClick={() => handleTabChange('penalty')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'penalty'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-penalty"
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              ค่าปรับ
+            </button>
+
+            <button
+              onClick={() => handleTabChange('reports')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'reports'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-reports"
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              สรุปรายงาน
+            </button>
+
+            <button
+              onClick={() => handleTabChange('users')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'users'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-users"
+            >
+              <Users className="h-4 w-4 shrink-0" />
+              รายชื่อพนักงาน
+            </button>
+
+            <button
+              onClick={() => handleTabChange('settings')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-settings"
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              คู่มือระบบ
+            </button>
+          </div>
+
+          {/* Right Arrow Button */}
+          <button
+            onClick={() => scrollMobileNav('right')}
+            className="flex items-center justify-center h-8 w-8 bg-slate-50 border border-slate-100 rounded-lg text-slate-500 hover:text-slate-900 active:scale-95 transition-all shrink-0 cursor-pointer"
+            title="เลื่อนขวา"
+            id="mobile-nav-scroll-right"
+          >
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 

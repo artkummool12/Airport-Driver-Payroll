@@ -56,6 +56,7 @@ export type AppTab =
   | 'dashboard'
   | 'line-import'
   | 'jobs'
+  | 'reports'
   | 'reports-daily'
   | 'reports-weekly'
   | 'reports-monthly'
@@ -74,3 +75,9 @@ export interface SpreadsheetInfo {
   status: 'disconnected' | 'connected' | 'syncing' | 'error';
   errorMessage?: string;
 }
+
+export function getCleanJobId(id: string): string {
+  if (!id) return '';
+  return id.split('_')[0];
+}
+

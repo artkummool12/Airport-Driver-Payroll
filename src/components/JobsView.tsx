@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Job, VehicleRate } from '../types';
+import { Job, VehicleRate, getCleanJobId } from '../types';
 import {
   Search,
   Plus,
@@ -237,8 +237,13 @@ export default function JobsView({
       return;
     }
 
+    // Ensure unique ID for database if it's a new job to prevent clashes on Supabase
+    const finalId = editingJob 
+      ? jobId 
+      : `${jobId}_${date.replace(/-/g, '')}_${time.replace(':', '')}_${Math.floor(100 + Math.random() * 900)}`;
+
     const finalJob: Job = {
-      id: jobId,
+      id: finalId,
       date,
       time,
       vehicleCode,
@@ -415,7 +420,7 @@ export default function JobsView({
               {filteredJobs.length > 0 ? (
                 filteredJobs.map(job => (
                   <tr key={job.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3 px-5 font-bold text-slate-800 font-mono">{job.id}</td>
+                    <td className="py-3 px-5 font-bold text-slate-800 font-mono">{getCleanJobId(job.id)}</td>
                     <td className="py-3 px-4 text-slate-600">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-slate-400" />
@@ -714,7 +719,7 @@ export default function JobsView({
                   {editingJob ? 'แก้ไขข้อมูลรอบงานวิ่งรับ-ส่ง' : 'บันทึกเที่ยวงานสนามบินแมนนวล'}
                 </h4>
                 <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                  รหัสอ้างอิง: {jobId}
+                  รหัสงาน: {getCleanJobId(jobId)} {editingJob && jobId !== getCleanJobId(jobId) && `(รหัสอ้างอิงระบบ: ${jobId})`}
                 </p>
               </div>
               <button
