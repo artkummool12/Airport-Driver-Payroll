@@ -97,6 +97,7 @@ export default function JobsView({
   // Filters
   const [search, setSearch] = useState('');
   const [selectedAirport, setSelectedAirport] = useState('All');
+  const [selectedCarFilter, setSelectedCarFilter] = useState('All');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -153,6 +154,8 @@ export default function JobsView({
 
       const matchesAirport = selectedAirport === 'All' || job.airport === selectedAirport;
 
+      const matchesCar = selectedCarFilter === 'All' || job.id.split('-')[0].toUpperCase() === selectedCarFilter.toUpperCase();
+
       let matchesDate = true;
       if (startDate) {
         matchesDate = matchesDate && job.date >= startDate;
@@ -161,9 +164,9 @@ export default function JobsView({
         matchesDate = matchesDate && job.date <= endDate;
       }
 
-      return matchesSearch && matchesAirport && matchesDate;
+      return matchesSearch && matchesAirport && matchesCar && matchesDate;
     }).sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
-  }, [jobs, search, selectedAirport, startDate, endDate]);
+  }, [jobs, search, selectedAirport, selectedCarFilter, startDate, endDate]);
 
   const [viewMode, setViewMode] = useState<'table' | 'dashboard'>('table');
 
@@ -393,7 +396,7 @@ export default function JobsView({
 
       {/* Filter panel */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
@@ -410,13 +413,29 @@ export default function JobsView({
             <select
               value={selectedAirport}
               onChange={(e) => setSelectedAirport(e.target.value)}
-              className="py-2 px-3.5 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+              className="py-2 px-3.5 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-semibold"
               id="select-filter-airport"
             >
               <option value="All">ทุกสนามบิน</option>
               <option value="สุวรรณภูมิ">สุวรรณภูมิ</option>
               <option value="ดอนเมือง">ดอนเมือง</option>
               <option value="อื่นๆ">อื่นๆ</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={selectedCarFilter}
+              onChange={(e) => setSelectedCarFilter(e.target.value)}
+              className="py-2 px-3.5 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-semibold"
+              id="select-filter-car"
+            >
+              <option value="All">ทุกทะเบียนรถ / ทุกคัน</option>
+              {carsList.map((car) => (
+                <option key={car.id} value={car.code}>
+                  {car.code} - {car.licensePlate} ({car.brand})
+                </option>
+              ))}
             </select>
           </div>
 
