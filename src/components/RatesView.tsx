@@ -95,58 +95,78 @@ export default function RatesView({ rates, onSaveRate, onDeleteRate }: RatesView
         </div>
       </div>
 
-      {/* Grid of rates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredRates.length > 0 ? (
-          filteredRates.map(rate => (
-            <div key={rate.vehicleCode} className="bg-white rounded-2xl border border-slate-100 shadow-xs p-5 flex flex-col justify-between gap-4 hover:border-slate-200 transition-all">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                    <Car className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-slate-800 font-mono tracking-wider">{rate.vehicleCode}</h4>
-                    <p className="text-[10.5px] text-slate-400 font-medium line-clamp-1 mt-0.5" title={rate.description}>
-                      {rate.description || 'ไม่มีคำอธิบายประกอบ'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleOpenEditForm(rate)}
-                    className="p-1.5 hover:bg-indigo-50 hover:text-indigo-600 text-slate-400 rounded-lg transition-colors"
-                    title="แก้ไขอัตรา"
-                    id={`btn-edit-rate-${rate.vehicleCode}`}
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(rate.vehicleCode)}
-                    className="p-1.5 hover:bg-rose-50 hover:text-rose-600 text-slate-400 rounded-lg transition-colors"
-                    title="ลบอัตรา"
-                    id={`btn-delete-rate-${rate.vehicleCode}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-100/50 flex items-center justify-between">
-                <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">ราคาต่อเที่ยวงาน</span>
-                <span className="text-base font-black text-indigo-600 font-mono">
-                  ฿{rate.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full py-16 bg-white rounded-2xl border border-dashed border-slate-200 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-            <Car className="h-8 w-8 text-slate-300" />
-            <p className="text-xs font-medium text-slate-500">ไม่พบรหัสอัตราค่ารถตรงตามคำค้นหา</p>
-          </div>
-        )}
+      {/* Table of rates */}
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-100 text-left text-xs font-sans">
+            <thead className="bg-slate-50/70 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+              <tr>
+                <th scope="col" className="px-6 py-3.5 w-24">ลำดับ</th>
+                <th scope="col" className="px-6 py-3.5 w-48">รหัสรุ่นรถ (Vehicle Code)</th>
+                <th scope="col" className="px-6 py-3.5">รายละเอียดหรือรุ่นรถ (Description)</th>
+                <th scope="col" className="px-6 py-3.5 text-right w-48">อัตราค่างานต่อเที่ยว (Price)</th>
+                <th scope="col" className="px-6 py-3.5 text-center w-28">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredRates.length > 0 ? (
+                filteredRates.map((rate, index) => (
+                  <tr key={rate.vehicleCode} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4 font-mono text-slate-400">
+                      {(index + 1).toString().padStart(2, '0')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-100 transition-colors">
+                          <Car className="h-4 w-4" />
+                        </div>
+                        <span className="font-mono font-bold text-slate-800 tracking-wider">
+                          {rate.vehicleCode}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 font-medium max-w-xs md:max-w-md truncate" title={rate.description}>
+                      {rate.description || <span className="text-slate-300 italic">ไม่มีคำอธิบาย</span>}
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono font-bold text-slate-800 text-sm">
+                      <span className="text-[10px] text-slate-400 font-sans mr-0.5">฿</span>
+                      {rate.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleOpenEditForm(rate)}
+                          className="p-1.5 hover:bg-indigo-50 hover:text-indigo-600 text-slate-400 rounded-lg transition-colors"
+                          title="แก้ไขอัตรา"
+                          id={`btn-edit-rate-${rate.vehicleCode}`}
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(rate.vehicleCode)}
+                          className="p-1.5 hover:bg-rose-50 hover:text-rose-600 text-slate-400 rounded-lg transition-colors"
+                          title="ลบอัตรา"
+                          id={`btn-delete-rate-${rate.vehicleCode}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-16 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Car className="h-8 w-8 text-slate-300" />
+                      <p className="text-xs font-medium text-slate-500">ไม่พบรหัสอัตราค่ารถตรงตามคำค้นหา</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Form Dialog Modal */}

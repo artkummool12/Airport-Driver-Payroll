@@ -14,11 +14,10 @@ import {
 } from 'lucide-react';
 
 interface SettingsViewProps {
-  onResetSeedData: () => Promise<void>;
   isSyncing: boolean;
 }
 
-export default function SettingsView({ onResetSeedData, isSyncing }: SettingsViewProps) {
+export default function SettingsView({ isSyncing }: SettingsViewProps) {
   const [copied, setCopied] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, id: string) => {
@@ -176,29 +175,12 @@ ALTER TABLE penalty_entries DISABLE ROW LEVEL SECURITY;`;
 
           <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-4 text-xs">
             <h4 className="font-bold text-slate-800 flex items-center gap-1.5">
-              <HelpCircle className="h-4.5 w-4.5 text-emerald-600" />
-              ส่วนผู้ดูแลระบบคลาวด์ (Cloud Admin Sandbox)
+              <ShieldCheck className="h-4.5 w-4.5 text-emerald-600" />
+              สถานะความปลอดภัยคลาวด์
             </h4>
             <p className="text-slate-500 leading-relaxed">
-              หากต้องการรีเซ็ตเพื่อล้างคลาวด์และติดตั้งพนักงานขับรถพร้อมรายการเที่ยววิ่งตัวอย่าง (29 เที่ยววิ่งดั้งเดิม) ทั้งหมดลงบน Supabase อีกครั้ง
+              ระบบนี้ได้รับการกำหนดค่าให้บันทึกและสืบค้นข้อมูลโดยตรงจากฐานข้อมูลระบบคลาวด์ของ Supabase ตลอดเวลา (ไม่มีการเก็บสำรองลงในบราวเซอร์หรือโหมดออฟไลน์อีกต่อไป) ข้อมูลทั้งหมดมีความเสถียรและเชื่อมโยงกันอย่างเรียลไทม์
             </p>
-
-            <div className="pt-2">
-              <button
-                onClick={async () => {
-                  const confirmed = window.confirm('คุณแน่ใจว่าต้องการรีเซ็ตข้อมูลและเขียนทับด้วยข้อมูลเริ่มแรกบน Supabase ใช่หรือไม่?');
-                  if (confirmed) {
-                    await onResetSeedData();
-                  }
-                }}
-                disabled={isSyncing}
-                className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                id="btn-reset-seed"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                รีเซ็ตข้อมูลคลาวด์ Supabase
-              </button>
-            </div>
           </div>
         </div>
       </div>

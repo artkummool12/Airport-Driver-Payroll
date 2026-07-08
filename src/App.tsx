@@ -1,12 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './lib/supabaseClient';
-import {
-  DEFAULT_USERS,
-  DEFAULT_JOBS,
-  DEFAULT_RATES,
-  DEFAULT_BONUS,
-  DEFAULT_PENALTY
-} from './lib/seed';
 import { UserAccount, Job, VehicleRate, BonusEntry, PenaltyEntry, AppTab } from './types';
 import SpreadsheetSync from './components/SpreadsheetSync';
 import DashboardView from './components/DashboardView';
@@ -33,85 +26,80 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-const LOCAL_USERS_KEY = 'airport_payroll_users_v2';
-const LOCAL_JOBS_KEY = 'airport_payroll_jobs_v2';
-const LOCAL_RATES_KEY = 'airport_payroll_rates_v2';
-const LOCAL_BONUS_KEY = 'airport_payroll_bonus_v2';
-const LOCAL_PENALTY_KEY = 'airport_payroll_penalty_v2';
 
 // Translation functions
 const mapJobFromDB = (j: any): Job => ({
   id: j.id,
-  date: j.date,
-  time: j.time,
-  vehicleCode: j.vehicle_code,
-  route: j.route,
-  airport: j.airport,
+  date: j.date || '',
+  time: j.time || '',
+  vehicleCode: j.vehicle_code || '',
+  route: j.route || '',
+  airport: j.airport || '',
   flight: j.flight || '',
-  baseFare: Number(j.base_fare),
-  bonus: Number(j.bonus),
-  penalty: Number(j.penalty),
-  tax: Number(j.tax),
-  netIncome: Number(j.net_income),
-  createdBy: j.created_by,
-  createdDate: j.created_date
+  baseFare: Number(j.base_fare) || 0,
+  bonus: Number(j.bonus) || 0,
+  penalty: Number(j.penalty) || 0,
+  tax: Number(j.tax) || 0,
+  netIncome: Number(j.net_income) || 0,
+  createdBy: j.created_by || '',
+  createdDate: j.created_date || ''
 });
 
 const mapJobToDB = (j: Job) => ({
   id: j.id,
-  date: j.date,
-  time: j.time,
-  vehicle_code: j.vehicleCode,
-  route: j.route,
-  airport: j.airport,
-  flight: j.flight,
-  base_fare: j.baseFare,
-  bonus: j.bonus,
-  penalty: j.penalty,
-  tax: j.tax,
-  net_income: j.netIncome,
-  created_by: j.createdBy,
-  created_date: j.createdDate
+  date: j.date || '',
+  time: j.time || '',
+  vehicle_code: j.vehicleCode || '',
+  route: j.route || '',
+  airport: j.airport || '',
+  flight: j.flight || '',
+  base_fare: Number(j.baseFare) || 0,
+  bonus: Number(j.bonus) || 0,
+  penalty: Number(j.penalty) || 0,
+  tax: Number(j.tax) || 0,
+  net_income: Number(j.netIncome) || 0,
+  created_by: j.createdBy || '',
+  created_date: j.createdDate || ''
 });
 
 const mapRateFromDB = (r: any): VehicleRate => ({
-  vehicleCode: r.vehicle_code,
-  description: r.description,
-  price: Number(r.price)
+  vehicleCode: r.vehicle_code || '',
+  description: r.description || '',
+  price: Number(r.price) || 0
 });
 
 const mapRateToDB = (r: VehicleRate) => ({
-  vehicle_code: r.vehicleCode,
-  description: r.description,
-  price: r.price
+  vehicle_code: r.vehicleCode || '',
+  description: r.description || '',
+  price: Number(r.price) || 0
 });
 
 const mapBonusFromDB = (b: any): BonusEntry => ({
   id: b.id,
-  jobId: b.job_id,
-  amount: Number(b.amount),
-  remark: b.remark
+  jobId: b.job_id || '',
+  amount: Number(b.amount) || 0,
+  remark: b.remark || ''
 });
 
 const mapBonusToDB = (b: BonusEntry) => ({
   id: b.id,
-  job_id: b.jobId,
-  amount: b.amount,
-  remark: b.remark
+  job_id: b.jobId || '',
+  amount: Number(b.amount) || 0,
+  remark: b.remark || ''
 });
 
 const mapPenaltyFromDB = (p: any): PenaltyEntry => ({
   id: p.id,
-  jobId: p.job_id,
-  amount: Number(p.amount),
-  reason: p.reason
+  jobId: p.job_id || '',
+  amount: Number(p.amount) || 0,
+  reason: p.reason || ''
 });
 
 const mapPenaltyToDB = (p: PenaltyEntry) => ({
   id: p.id,
-  job_id: p.jobId,
-  amount: p.amount,
-  reason: p.reason
+  job_id: p.jobId || '',
+  amount: Number(p.amount) || 0,
+  reason: p.reason || ''
 });
 
 export default function App() {
@@ -129,30 +117,7 @@ export default function App() {
   const [bonuses, setBonuses] = useState<BonusEntry[]>([]);
   const [penalties, setPenalties] = useState<PenaltyEntry[]>([]);
 
-  // 1. Fallback to Local Storage in case of database table errors
-  const loadLocalFallback = useCallback(() => {
-    const cachedUsers = localStorage.getItem(LOCAL_USERS_KEY);
-    const cachedJobs = localStorage.getItem(LOCAL_JOBS_KEY);
-    const cachedRates = localStorage.getItem(LOCAL_RATES_KEY);
-    const cachedBonus = localStorage.getItem(LOCAL_BONUS_KEY);
-    const cachedPenalty = localStorage.getItem(LOCAL_PENALTY_KEY);
-
-    if (cachedUsers && cachedJobs && cachedRates && cachedBonus && cachedPenalty) {
-      setUsers(JSON.parse(cachedUsers));
-      setJobs(JSON.parse(cachedJobs));
-      setRates(JSON.parse(cachedRates));
-      setBonuses(JSON.parse(cachedBonus));
-      setPenalties(JSON.parse(cachedPenalty));
-    } else {
-      setUsers(DEFAULT_USERS);
-      setJobs(DEFAULT_JOBS);
-      setRates(DEFAULT_RATES);
-      setBonuses(DEFAULT_BONUS);
-      setPenalties(DEFAULT_PENALTY);
-    }
-  }, []);
-
-  // 2. Fetch all values from Supabase Cloud DB
+  // Fetch all values from Supabase Cloud DB
   const loadSupabaseData = useCallback(async () => {
     setIsSyncing(true);
     try {
@@ -190,65 +155,20 @@ export default function App() {
       const mappedBonuses = (dbBonuses || []).map(mapBonusFromDB);
       const mappedPenalties = (dbPenalties || []).map(mapPenaltyFromDB);
 
-      // Auto-seed if empty
-      if (mappedUsers.length === 0 && mappedRates.length === 0 && mappedJobs.length === 0) {
-        console.log("Supabase is empty. Automatically seeding default sandbox data...");
-        // Call seed function but inline to avoid state race conditions
-        const { error: uErr } = await supabase.from('user_accounts').upsert(
-          DEFAULT_USERS.map(u => ({
-            id: u.id,
-            name: u.name,
-            email: u.email,
-            role: u.role,
-            phone: u.phone,
-            status: u.status
-          }))
-        );
-        if (uErr) throw uErr;
-
-        const { error: rErr } = await supabase.from('vehicle_rates').upsert(DEFAULT_RATES.map(mapRateToDB));
-        if (rErr) throw rErr;
-
-        const { error: jErr } = await supabase.from('jobs').upsert(DEFAULT_JOBS.map(mapJobToDB));
-        if (jErr) throw jErr;
-
-        const { error: bErr } = await supabase.from('bonus_entries').upsert(DEFAULT_BONUS.map(mapBonusToDB));
-        if (bErr) throw bErr;
-
-        if (DEFAULT_PENALTY.length > 0) {
-          const { error: pErr } = await supabase.from('penalty_entries').upsert(DEFAULT_PENALTY.map(mapPenaltyToDB));
-          if (pErr) throw pErr;
-        }
-
-        // Retry read
-        const { data: u2 } = await supabase.from('user_accounts').select('*');
-        const { data: r2 } = await supabase.from('vehicle_rates').select('*');
-        const { data: j2 } = await supabase.from('jobs').select('*');
-        const { data: b2 } = await supabase.from('bonus_entries').select('*');
-        const { data: p2 } = await supabase.from('penalty_entries').select('*');
-
-        setUsers((u2 || []).map((u: any) => ({ id: u.id, name: u.name, email: u.email, role: u.role, phone: u.phone, status: u.status })));
-        setRates((r2 || []).map(mapRateFromDB));
-        setJobs((j2 || []).map(mapJobFromDB));
-        setBonuses((b2 || []).map(mapBonusFromDB));
-        setPenalties((p2 || []).map(mapPenaltyFromDB));
-      } else {
-        setUsers(mappedUsers);
-        setRates(mappedRates);
-        setJobs(mappedJobs);
-        setBonuses(mappedBonuses);
-        setPenalties(mappedPenalties);
-      }
+      setUsers(mappedUsers);
+      setRates(mappedRates);
+      setJobs(mappedJobs);
+      setBonuses(mappedBonuses);
+      setPenalties(mappedPenalties);
 
       setDbError(null);
     } catch (err: any) {
-      console.log('Supabase offline fallback active (not an error, using local storage):', err.message || err);
+      console.error('Supabase fetch failed:', err.message || err);
       setDbError(err.message || 'โปรดตรวจสอบความถูกต้องของฐานข้อมูล Supabase (ตารางอาจยังไม่ได้สร้าง)');
-      loadLocalFallback();
     } finally {
       setIsSyncing(false);
     }
-  }, [loadLocalFallback]);
+  }, []);
 
   // Load database on Mount
   useEffect(() => {
@@ -519,59 +439,6 @@ export default function App() {
     }
   };
 
-  // Reset sandbox seed data
-  const handleResetSeedData = async () => {
-    setIsSyncing(true);
-    try {
-      // 1. Delete all records from Supabase tables
-      const { error: bErr } = await supabase.from('bonus_entries').delete().neq('id', 'placeholder');
-      if (bErr) throw bErr;
-      const { error: pErr } = await supabase.from('penalty_entries').delete().neq('id', 'placeholder');
-      if (pErr) throw pErr;
-      const { error: jErr } = await supabase.from('jobs').delete().neq('id', 'placeholder');
-      if (jErr) throw jErr;
-      const { error: rErr } = await supabase.from('vehicle_rates').delete().neq('vehicle_code', 'placeholder');
-      if (rErr) throw rErr;
-      const { error: uErr } = await supabase.from('user_accounts').delete().neq('id', 'placeholder');
-      if (uErr) throw uErr;
-
-      // 2. Insert DEFAULT records to Supabase tables
-      const { error: uIns } = await supabase.from('user_accounts').insert(
-        DEFAULT_USERS.map(u => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: u.role,
-          phone: u.phone,
-          status: u.status
-        }))
-      );
-      if (uIns) throw uIns;
-
-      const { error: rIns } = await supabase.from('vehicle_rates').insert(DEFAULT_RATES.map(mapRateToDB));
-      if (rIns) throw rIns;
-
-      const { error: jIns } = await supabase.from('jobs').insert(DEFAULT_JOBS.map(mapJobToDB));
-      if (jIns) throw jIns;
-
-      const { error: bIns } = await supabase.from('bonus_entries').insert(DEFAULT_BONUS.map(mapBonusToDB));
-      if (bIns) throw bIns;
-
-      if (DEFAULT_PENALTY.length > 0) {
-        const { error: pIns } = await supabase.from('penalty_entries').insert(DEFAULT_PENALTY.map(mapPenaltyToDB));
-        if (pIns) throw pIns;
-      }
-
-      await loadSupabaseData();
-      alert('รีเซ็ตล้างฐานข้อมูล Supabase และโหลด 29 เที่ยววิ่งทดสอบใหม่สำเร็จ!');
-    } catch (err: any) {
-      console.log('Seed reset Supabase fallback notification:', err.message || err);
-      alert(`ไม่สามารถรีเซ็ตข้อมูลคลาวด์ได้: ${err.message}\n(ตรวจพบว่ายังไม่มีตารางข้อมูลในคลาวด์ โปรดสร้างตารางข้อมูลในหน้า SQL Editor ของ Supabase ก่อน)`);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans antialiased text-slate-800">
       {/* 100% Localized Header */}
@@ -589,7 +456,27 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {dbError ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>
+                  เชื่อมต่อล้มเหลว (Supabase Offline)
+                </span>
+                <button
+                  onClick={() => loadSupabaseData()}
+                  className="px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-black rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                  title="ลองเชื่อมต่อฐานข้อมูล Supabase ใหม่อีกครั้ง"
+                >
+                  <RefreshCw className="h-3 w-3 animate-spin" /> เชื่อมต่อใหม่
+                </button>
+              </div>
+            ) : (
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+                เชื่อมต่อระบบคลาวด์แล้ว (Supabase Online)
+              </span>
+            )}
             <div className="flex items-center gap-2 text-xs bg-indigo-900/50 border border-indigo-700/50 px-3 py-1.5 rounded-xl">
               <ShieldCheck className="h-4 w-4 text-emerald-400" />
               <span className="text-slate-200 font-medium font-mono">it.sumino.apico@gmail.com</span>
@@ -603,8 +490,8 @@ export default function App() {
         {/* Spreadsheet Status Header Card */}
         <SpreadsheetSync
           isSyncing={isSyncing}
-          onResetSeedData={handleResetSeedData}
           dbError={dbError}
+          onRefresh={() => loadSupabaseData()}
         />
 
         {/* 100% Thai Navigation Menu */}
@@ -799,7 +686,6 @@ export default function App() {
 
           {activeTab === 'settings' && (
             <SettingsView
-              onResetSeedData={handleResetSeedData}
               isSyncing={isSyncing}
             />
           )}
