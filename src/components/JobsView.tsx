@@ -48,6 +48,32 @@ interface JobsViewProps {
   currentUserEmail: string;
 }
 
+const DAY_NAMES_THAI = [
+  'วันอาทิตย์',
+  'วันจันทร์',
+  'วันอังคาร',
+  'วันพุธ',
+  'วันพฤหัสบดี',
+  'วันศุกร์',
+  'วันเสาร์'
+];
+
+const getThaiDayName = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return '';
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const day = d.getDay();
+  return DAY_NAMES_THAI[day] || '';
+};
+
+const formatDateDMY = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
+};
+
 export default function JobsView({
   jobs,
   rates,
@@ -144,6 +170,40 @@ export default function JobsView({
       totalTax,
       totalNetIncome
     };
+  }, [filteredJobs]);
+
+  // Group filtered jobs by date
+  const groupedJobs = useMemo(() => {
+    const groups: Record<string, Job[]> = {};
+    filteredJobs.forEach(job => {
+      if (!groups[job.date]) {
+        groups[job.date] = [];
+      }
+      groups[job.date].push(job);
+    });
+
+    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a)); // Latest date first
+    return sortedDates.map(date => {
+      const sortedJobs = groups[date].sort((a, b) => a.time.localeCompare(b.time));
+      const totals = sortedJobs.reduce(
+        (acc, j) => {
+          acc.trips += 1;
+          acc.base += j.baseFare;
+          acc.bonus += j.bonus;
+          acc.penalty += j.penalty;
+          acc.tax += j.tax;
+          acc.net += j.netIncome;
+          return acc;
+        },
+        { trips: 0, base: 0, bonus: 0, penalty: 0, tax: 0, net: 0 }
+      );
+      return {
+        date,
+        jobs: sortedJobs,
+        dayName: getThaiDayName(date),
+        totals
+      };
+    });
   }, [filteredJobs]);
 
   // Compute airport distribution for charts
@@ -397,102 +457,135 @@ export default function JobsView({
       </div>
 
       {viewMode === 'table' ? (
-        /* Booking list */
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 px-5">รหัสงาน</th>
-                <th className="py-3.5 px-4">วัน / เวลา</th>
-                <th className="py-3.5 px-4">รหัสรถ</th>
-                <th className="py-3.5 px-4">เส้นทางวิ่ง & เที่ยวบิน</th>
-                <th className="py-3.5 px-4">สนามบิน</th>
-                <th className="py-3.5 px-4 text-right">ค่างานดิบ</th>
-                <th className="py-3.5 px-4 text-right text-emerald-600">เงินเพิ่ม (โบนัส)</th>
-                <th className="py-3.5 px-4 text-right text-rose-500">ค่าปรับ</th>
-                <th className="py-3.5 px-4 text-right text-rose-600">ภาษีหัก 5%</th>
-                <th className="py-3.5 px-4 text-right text-indigo-600">ยอดรับสุทธิ</th>
-                <th className="py-3.5 px-5 text-center">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filteredJobs.length > 0 ? (
-                filteredJobs.map(job => (
-                  <tr key={job.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3 px-5 font-bold text-slate-800 font-mono">{getCleanJobId(job.id)}</td>
-                    <td className="py-3 px-4 text-slate-600">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="font-mono">{job.date}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5 font-mono">
-                        <Clock className="h-3 w-3" />
-                        <span>{job.time} น.</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-mono font-bold text-slate-800">
-                      <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">{job.vehicleCode}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="font-semibold text-slate-800 truncate max-w-[150px]">{job.route}</p>
-                      {job.flight && (
-                        <p className="text-[9.5px] text-indigo-600 font-mono flex items-center gap-0.5 mt-0.5">
-                          ✈️ {job.flight}
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-slate-600">{job.airport}</span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-700">
-                      ฿{job.baseFare.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
-                      {job.bonus > 0 ? `฿${job.bonus.toLocaleString()}` : '-'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-rose-500">
-                      {job.penalty > 0 ? `฿${job.penalty.toLocaleString()}` : '-'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-rose-600">
-                      ฿{job.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-indigo-600 bg-indigo-50/10">
-                      ฿{job.netIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-3 px-5 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => handleOpenEditForm(job)}
-                          className="p-1.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors"
-                          title="แก้ไขงานวิ่ง"
-                          id={`btn-edit-${job.id}`}
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(job.id)}
-                          className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
-                          title="ลบงานวิ่ง"
-                          id={`btn-delete-${job.id}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={11} className="py-12 text-center text-slate-400">
-                    ไม่พบบันทึกเที่ยววิ่งรถสนามบินตามเงื่อนไขการค้นหาข้างต้น
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        /* Booking list grouped by day */
+        <div className="space-y-8">
+          {groupedJobs.length > 0 ? (
+            groupedJobs.map(group => (
+              <div key={group.date} className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden" id={`day-table-${group.date}`}>
+                {/* Day Header - Blue Header bar */}
+                <div className="bg-[#244270]/10 p-4 border-b border-slate-100 flex justify-between items-center">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Calendar className="h-4.5 w-4.5 text-indigo-600" />
+                    {group.dayName} ที่ {formatDateDMY(group.date)}
+                  </h4>
+                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full font-mono">
+                    {group.totals.trips} เที่ยววิ่ง
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[#244270] text-white font-bold border-b border-slate-100 text-[10px] uppercase tracking-wider">
+                        <th className="py-3.5 px-5">รหัสงาน</th>
+                        <th className="py-3.5 px-4">เวลา</th>
+                        <th className="py-3.5 px-4">รหัสรถ</th>
+                        <th className="py-3.5 px-4">เส้นทางวิ่ง & เที่ยวบิน</th>
+                        <th className="py-3.5 px-4">สนามบิน</th>
+                        <th className="py-3.5 px-4 text-right">ค่างานดิบ</th>
+                        <th className="py-3.5 px-4 text-right text-emerald-100">เงินเพิ่ม (โบนัส)</th>
+                        <th className="py-3.5 px-4 text-right text-rose-100">ค่าปรับ</th>
+                        <th className="py-3.5 px-4 text-right text-rose-100">ภาษีหัก 5%</th>
+                        <th className="py-3.5 px-4 text-right text-indigo-100">ยอดรับสุทธิ</th>
+                        <th className="py-3.5 px-5 text-center">จัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {group.jobs.map(job => (
+                        <tr key={job.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-5 font-bold text-slate-800 font-mono">{getCleanJobId(job.id)}</td>
+                          <td className="py-3 px-4 text-slate-600">
+                            <div className="flex items-center gap-1 font-mono">
+                              <Clock className="h-3.5 w-3.5 text-slate-400" />
+                              <span>{job.time} น.</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                            <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">{job.vehicleCode}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <p className="font-semibold text-slate-800 truncate max-w-[200px]">{job.route}</p>
+                            {job.flight && (
+                              <p className="text-[9.5px] text-indigo-600 font-mono flex items-center gap-0.5 mt-0.5">
+                                ✈️ {job.flight}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-semibold text-slate-600">{job.airport}</span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-700">
+                            ฿{job.baseFare.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
+                            {job.bonus > 0 ? `฿${job.bonus.toLocaleString()}` : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-rose-500">
+                            {job.penalty > 0 ? `฿${job.penalty.toLocaleString()}` : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-rose-600">
+                            ฿{job.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-indigo-600 bg-indigo-50/10">
+                            ฿{job.netIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditForm(job)}
+                                className="p-1.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                title="แก้ไขงานวิ่ง"
+                                id={`btn-edit-${job.id}`}
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(job.id)}
+                                className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                title="ลบงานวิ่ง"
+                                id={`btn-delete-${job.id}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      {/* Sum Row matching Daily Sheet style */}
+                      <tr className="bg-slate-50/80 font-bold border-t-2 border-slate-200 border-b-4 border-double border-slate-950 text-slate-800">
+                        <td colSpan={5} className="py-3.5 px-5 text-left font-black text-slate-900">
+                          รวม {group.dayName}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900">
+                          ฿{group.totals.base.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-600">
+                          ฿{group.totals.bonus.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-rose-500">
+                          ฿{group.totals.penalty.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-rose-600">
+                          ฿{group.totals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-indigo-700 bg-indigo-100/10">
+                          ฿{group.totals.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3.5 px-5"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center text-slate-400">
+              ไม่พบบันทึกเที่ยววิ่งรถสนามบินตามเงื่อนไขการค้นหาข้างต้น
+            </div>
+          )}
         </div>
-      </div>
       ) : (
         /* Dynamic dashboard reports view */
         <div className="space-y-6">

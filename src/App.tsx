@@ -559,6 +559,19 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setActiveTab('reports')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+              activeTab === 'reports'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+            }`}
+            id="tab-reports"
+          >
+            <FileText className="h-4 w-4" />
+            สรุปรายงานการคำนวณเงิน
+          </button>
+
+          <button
             onClick={() => setActiveTab('rates')}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'rates'
@@ -595,19 +608,6 @@ export default function App() {
           >
             <AlertTriangle className="h-4 w-4" />
             รายการค่าปรับ
-          </button>
-
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
-              activeTab === 'reports'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
-            }`}
-            id="tab-reports"
-          >
-            <FileText className="h-4 w-4" />
-            สรุปรายงานการคำนวณเงิน
           </button>
 
           <button
@@ -681,6 +681,19 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => handleTabChange('reports')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'reports'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-reports"
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              สรุปรายงาน
+            </button>
+
+            <button
               onClick={() => handleTabChange('rates')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'rates'
@@ -717,19 +730,6 @@ export default function App() {
             >
               <AlertTriangle className="h-4 w-4 shrink-0" />
               ค่าปรับ
-            </button>
-
-            <button
-              onClick={() => handleTabChange('reports')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                activeTab === 'reports'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 active:bg-slate-50'
-              }`}
-              id="mobile-tab-reports"
-            >
-              <FileText className="h-4 w-4 shrink-0" />
-              สรุปรายงาน
             </button>
 
             <button
