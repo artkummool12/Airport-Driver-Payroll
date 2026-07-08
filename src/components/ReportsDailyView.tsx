@@ -7,6 +7,32 @@ interface ReportsDailyViewProps {
   jobs: Job[];
 }
 
+const DAY_NAMES_THAI = [
+  'วันอาทิตย์',
+  'วันจันทร์',
+  'วันอังคาร',
+  'วันพุธ',
+  'วันพฤหัสบดี',
+  'วันศุกร์',
+  'วันเสาร์'
+];
+
+const getThaiDayName = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return '';
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const day = d.getDay();
+  return DAY_NAMES_THAI[day] || '';
+};
+
+const formatDateDMY = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
+};
+
 export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
   // Find all available dates
   const availableDates = useMemo(() => {
@@ -15,7 +41,7 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
   }, [jobs]);
 
   const [selectedDate, setSelectedDate] = useState(() => {
-    return availableDates[0] || '';
+    return '';
   });
 
   // Filter jobs for selected date
@@ -46,6 +72,40 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
       },
       { trips: 0, base: 0, bonus: 0, penalty: 0, tax: 0, net: 0 }
     );
+  }, [dailyJobs]);
+
+  // Group daily jobs by date
+  const groupedByDate = useMemo(() => {
+    const groups: Record<string, Job[]> = {};
+    dailyJobs.forEach(job => {
+      if (!groups[job.date]) {
+        groups[job.date] = [];
+      }
+      groups[job.date].push(job);
+    });
+
+    const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a)); // Latest date first
+    return sortedDates.map(date => {
+      const sortedJobs = groups[date].sort((a, b) => a.time.localeCompare(b.time));
+      const totals = sortedJobs.reduce(
+        (acc, j) => {
+          acc.trips += 1;
+          acc.base += j.baseFare;
+          acc.bonus += j.bonus;
+          acc.penalty += j.penalty;
+          acc.tax += j.tax;
+          acc.net += j.netIncome;
+          return acc;
+        },
+        { trips: 0, base: 0, bonus: 0, penalty: 0, tax: 0, net: 0 }
+      );
+      return {
+        date,
+        jobs: sortedJobs,
+        dayName: getThaiDayName(date),
+        totals
+      };
+    });
   }, [dailyJobs]);
 
   // Recharts Airport distribution data
@@ -153,6 +213,69 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
         </button>
       </div>
 
+      {/* 100% Premium Dashboard Summary Box (Weekly Grand Summary) */}
+      <div className="bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-md relative overflow-hidden" id="weekly-grand-summary">
+        {/* Decorative background glow */}
+        <div className="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-teal-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
+              <Landmark className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black tracking-wider text-slate-300 uppercase">
+                สรุปยอดรวมสุทธิรายสัปดาห์ (Weekly Grand Summary)
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">รวมผลประกอบการวิ่งรถสะสมจากวันปฏิบัติงานที่แสดงผล</p>
+            </div>
+          </div>
+          <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full font-bold font-mono">
+            {selectedDate ? `1 วัน` : `${availableDates.length} วันทำการ`}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+          {/* Total Trips */}
+          <div className="pt-4 md:pt-0 flex flex-col justify-between">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+              จำนวนงานรวมทั้งสิ้น
+            </span>
+            <div className="mt-2.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-extrabold font-mono text-white">
+                {daySubtotals.trips}
+              </span>
+              <span className="text-xs font-bold text-slate-400">งานวิ่ง</span>
+            </div>
+          </div>
+
+          {/* Total Tax */}
+          <div className="pt-4 md:pt-0 md:pl-6 flex flex-col justify-between">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+              ภาษีหัก ณ ที่จ่าย รวม
+            </span>
+            <div className="mt-2.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-extrabold font-mono text-rose-400">
+                ฿{daySubtotals.tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+
+          {/* Total Net Income */}
+          <div className="pt-4 md:pt-0 md:pl-6 flex flex-col justify-between">
+            <span className="text-[10px] font-bold text-indigo-300 block uppercase tracking-wider">
+              ยอดสุทธิที่ได้รับรวม
+            </span>
+            <div className="mt-2.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-extrabold font-mono text-emerald-400">
+                ฿{daySubtotals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="printable-report space-y-6">
         {/* Printable Header */}
         <div className="hidden print:block text-center pb-6 border-b border-slate-200">
@@ -161,65 +284,6 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
           <p className="text-xs font-mono font-bold text-indigo-700 mt-2 bg-indigo-50 inline-block px-4 py-1.5 rounded-full">
             ประจำวันที่: {selectedDate ? formatDateTH(selectedDate) : 'ทั้งหมด (ทุกวัน)'}
           </p>
-        </div>
-
-        {/* Bento Stats Display */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between relative overflow-hidden transition-all hover:shadow-md">
-            <div>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">เที่ยวงานวิ่งสะสม</span>
-              <span className="text-2xl font-black text-slate-800 font-mono mt-1 block">{daySubtotals.trips} เที่ยว</span>
-            </div>
-            <div className="mt-3 text-[10px] text-slate-400 font-medium">รวมรอบวิ่งจริงของวันนี้</div>
-            <div className="absolute right-3 top-3 p-1.5 bg-indigo-50 text-indigo-500 rounded-lg">
-              <Car className="h-4 w-4" />
-            </div>
-          </div>
-
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between relative overflow-hidden transition-all hover:shadow-md">
-            <div>
-              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider block">ค่างาน + โบนัสสะสม</span>
-              <span className="text-2xl font-black text-emerald-600 font-mono mt-1 block">
-                ฿{(daySubtotals.base + daySubtotals.bonus).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="mt-3 text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-              <Award className="h-3.5 w-3.5" />
-              โบนัสบวกเพิ่ม ฿{daySubtotals.bonus.toLocaleString()}
-            </div>
-            <div className="absolute right-3 top-3 p-1.5 bg-emerald-50 text-emerald-500 rounded-lg">
-              <TrendingUp className="h-4 w-4" />
-            </div>
-          </div>
-
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between relative overflow-hidden transition-all hover:shadow-md">
-            <div>
-              <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider block">หักภาษี 5% และค่าปรับ</span>
-              <span className="text-2xl font-black text-rose-500 font-mono mt-1 block">
-                ฿{(daySubtotals.penalty + daySubtotals.tax).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="mt-3 text-[10px] text-rose-500 font-bold flex items-center gap-1">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              ภาษี ฿{daySubtotals.tax.toLocaleString()} | ปรับ ฿{daySubtotals.penalty.toLocaleString()}
-            </div>
-            <div className="absolute right-3 top-3 p-1.5 bg-rose-50 text-rose-400 rounded-lg">
-              <Landmark className="h-4 w-4" />
-            </div>
-          </div>
-
-          <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex flex-col justify-between relative overflow-hidden">
-            <div>
-              <span className="text-[10px] font-black text-indigo-300 uppercase tracking-wider block">รายรับสุทธิพนักงานขับ</span>
-              <span className="text-2xl font-black text-indigo-400 font-mono mt-1 block">
-                ฿{daySubtotals.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="mt-3 text-[10px] text-indigo-200/80 font-bold">สุทธิหลังหักภาษีและหักปรับ</div>
-            <div className="absolute right-3 top-3 p-1.5 bg-indigo-500/20 text-indigo-300 rounded-lg">
-              <Landmark className="h-4 w-4" />
-            </div>
-          </div>
         </div>
 
         {/* Visual Charts Row */}
@@ -286,110 +350,107 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
           </div>
         )}
 
-        {/* Jobs table */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-            <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <FileText className="h-4.5 w-4.5 text-indigo-500" />
-              รายการปฏิบัติงานวิ่งรถ ประจำวันที่ {selectedDate ? formatDateTH(selectedDate) : 'ทั้งหมด (ทุกวัน)'}
-            </h4>
-            <span className="text-[10.5px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full font-mono">
-              {daySubtotals.trips} เที่ยววิ่ง
-            </span>
-          </div>
+        {/* Grouped Jobs Table - Separated by Day */}
+        <div className="space-y-8">
+          {groupedByDate.length > 0 ? (
+            groupedByDate.map(group => (
+              <div key={group.date} className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden" id={`day-table-${group.date}`}>
+                {/* Day Header - Blue Header bar */}
+                <div className="bg-[#244270]/10 p-4 border-b border-slate-100 flex justify-between items-center">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Calendar className="h-4.5 w-4.5 text-indigo-600" />
+                    {group.dayName} ที่ {formatDateDMY(group.date)}
+                  </h4>
+                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full font-mono">
+                    {group.totals.trips} เที่ยววิ่ง
+                  </span>
+                </div>
 
-          <div className="overflow-x-auto font-sans">
-            <table className="w-full text-left border-collapse text-[10.5px]">
-              <thead>
-                <tr className="bg-slate-50/20 text-slate-400 font-bold border-b border-slate-100">
-                  <th className="p-3 w-[12%]">รหัสงาน</th>
-                  <th className="p-3 w-[10%]">เวลา</th>
-                  <th className="p-3 w-[12%]">รหัสรถ</th>
-                  <th className="p-3 w-[26%]">เส้นทาง & เที่ยวบิน</th>
-                  <th className="p-3 text-right w-[10%]">ค่างานดิบ</th>
-                  <th className="p-3 text-right text-emerald-600 w-[10%]">บวกเพิ่ม (โบนัส)</th>
-                  <th className="p-3 text-right text-rose-500 w-[10%]">ค่าปรับหัก</th>
-                  <th className="p-3 text-right text-rose-600 w-[10%]">ภาษีหัก 5%</th>
-                  <th className="p-3 text-right text-indigo-600 w-[10%]">สุทธิ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {dailyJobs.length > 0 ? (
-                  dailyJobs.map(job => (
-                    <tr key={job.id} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="p-3 font-mono font-bold text-slate-800">{getCleanJobId(job.id)}</td>
-                      <td className="p-3 font-mono font-bold text-slate-700">{job.time} น.</td>
-                      <td className="p-3">
-                        <span className="bg-slate-100 font-mono font-bold text-slate-700 px-1.5 py-0.5 rounded text-[10px]">
-                          {job.vehicleCode}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <p className="font-semibold text-slate-800">{job.route}</p>
-                        {job.flight && (
-                          <p className="text-[9px] text-slate-400 font-mono mt-0.5">
-                            ✈️ เที่ยวบิน: {job.flight}
-                          </p>
-                        )}
-                      </td>
-                      <td className="p-3 text-right font-mono font-bold text-slate-700">
-                        ฿{job.baseFare.toFixed(2)}
-                      </td>
-                      <td className="p-3 text-right font-mono font-bold text-emerald-600">
-                        {job.bonus > 0 ? `฿${job.bonus.toFixed(2)}` : '0.00'}
-                      </td>
-                      <td className="p-3 text-right font-mono font-bold text-rose-500">
-                        {job.penalty > 0 ? `฿${job.penalty.toFixed(2)}` : '0.00'}
-                      </td>
-                      <td className="p-3 text-right font-mono font-bold text-rose-600">
-                        ฿{job.tax.toFixed(2)}
-                      </td>
-                      <td className="p-3 text-right font-mono font-bold text-indigo-600 bg-indigo-50/10">
-                        ฿{job.netIncome.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={9} className="py-16 text-center text-slate-400">
-                      <p className="font-medium text-slate-500">ไม่พบบันทึกเที่ยวงานวิ่งรถในวันที่ระบุ</p>
-                      <p className="text-[10px] text-slate-400 mt-1">กรุณาวางรายงานสรุปผลจาก LINE หรือบันทึกเที่ยววิ่งแมนนวลเพื่อเริ่มต้นคำนวณ</p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Subtotals Footer panel */}
-          <div className="bg-slate-900 text-white p-5 flex flex-wrap justify-between items-center text-xs gap-4 border-t border-slate-800">
-            <div className="flex gap-5 font-semibold text-slate-300">
-              <span>
-                ยอดงานดิบรวม:{' '}
-                <span className="font-mono text-white font-bold">฿{daySubtotals.base.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </span>
-              {daySubtotals.bonus > 0 && (
-                <span className="text-emerald-400">
-                  โบนัสสะสม: <span className="font-mono font-bold text-white">฿{daySubtotals.bonus.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </span>
-              )}
-              {daySubtotals.penalty > 0 && (
-                <span className="text-rose-400">
-                  ค่าปรับรวม: <span className="font-mono font-bold text-white">฿{daySubtotals.penalty.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </span>
-              )}
+                <div className="overflow-x-auto font-sans">
+                  <table className="w-full text-left border-collapse text-[10px]">
+                    <thead>
+                      <tr className="bg-[#244270] text-white font-bold border-b border-slate-100 uppercase tracking-wider text-[9.5px]">
+                        <th className="p-3 w-[10%]">วันที่</th>
+                        <th className="p-3 w-[11%]">รหัสรถ</th>
+                        <th className="p-3 w-[11%]">รหัสงาน</th>
+                        <th className="p-3 w-[8%]">เวลา</th>
+                        <th className="p-3 w-[26%]">เส้นทาง & เที่ยวบิน</th>
+                        <th className="p-3 text-center w-[8%]">จำนวนงาน</th>
+                        <th className="p-3 text-right w-[9%]">ค่างานต่องาน</th>
+                        <th className="p-3 text-right text-emerald-100 w-[9%]">บวกเพิ่ม</th>
+                        <th className="p-3 text-right text-rose-100 w-[9%]">ค่าปรับ</th>
+                        <th className="p-3 text-right text-rose-100 w-[9%]">หัก ภาษี 5%</th>
+                        <th className="p-3 text-right text-indigo-100 w-[10%]">ยอดสุทธิ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {group.jobs.map(job => (
+                        <tr key={job.id} className="hover:bg-slate-50/40 transition-colors">
+                          <td className="p-3 font-mono font-bold text-slate-600">{formatDateDMY(job.date)}</td>
+                          <td className="p-3">
+                            <span className="bg-slate-100 font-mono font-bold text-slate-700 px-1.5 py-0.5 rounded text-[9.5px]">
+                              {job.vehicleCode}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono font-bold text-slate-800">{getCleanJobId(job.id)}</td>
+                          <td className="p-3 font-mono font-bold text-slate-700">{job.time} น.</td>
+                          <td className="p-3">
+                            <p className="font-semibold text-slate-800">{job.route}</p>
+                            {job.flight && (
+                              <p className="text-[8.5px] text-indigo-600 font-mono mt-0.5">
+                                ✈️ เที่ยวบิน: {job.flight}
+                              </p>
+                            )}
+                          </td>
+                          <td className="p-3 text-center font-mono font-bold text-slate-700">1</td>
+                          <td className="p-3 text-right font-mono font-bold text-slate-700">
+                            ฿{job.baseFare.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-600">
+                            {job.bonus > 0 ? `฿${job.bonus.toFixed(2)}` : '0.00'}
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-rose-500">
+                            {job.penalty > 0 ? `฿${job.penalty.toFixed(2)}` : '0.00'}
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-rose-600">
+                            ฿{job.tax.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-indigo-600 bg-indigo-50/5">
+                            ฿{job.netIncome.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      {/* Sum Row styled matching the spreadsheet double underlines */}
+                      <tr className="bg-slate-50/80 font-bold border-t-2 border-slate-200 border-b-4 border-double border-slate-900 text-slate-800">
+                        <td colSpan={5} className="p-3 text-left font-black text-slate-900">
+                          รวม {group.dayName}
+                        </td>
+                        <td className="p-3 text-center font-mono font-black text-slate-900">
+                          {group.totals.trips}
+                        </td>
+                        <td className="p-3"></td>
+                        <td className="p-3"></td>
+                        <td className="p-3"></td>
+                        <td className="p-3 text-right font-mono font-black text-rose-600">
+                          ฿{group.totals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-3 text-right font-mono font-black text-indigo-700 bg-indigo-100/10">
+                          ฿{group.totals.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center text-slate-400">
+              <p className="font-medium text-slate-500">ไม่พบบันทึกเที่ยวงานวิ่งรถในวันที่ระบุ</p>
+              <p className="text-[10px] text-slate-400 mt-1">กรุณาวางรายงานสรุปผลจาก LINE หรือบันทึกเที่ยววิ่งแมนนวลเพื่อเริ่มต้นคำนวณ</p>
             </div>
-
-            <div className="flex gap-5 font-bold">
-              <span className="text-rose-400">
-                ภาษีหัก ณ ที่จ่าย 5%: <span className="font-mono text-white">฿{daySubtotals.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </span>
-              <span className="text-indigo-300">
-                รวมสุทธิรับสุทธิประจำวัน:{' '}
-                <span className="font-mono text-sm font-extrabold text-indigo-400">฿{daySubtotals.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
