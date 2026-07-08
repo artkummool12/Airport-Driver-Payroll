@@ -1,4 +1,4 @@
-import { UserAccount, Job, VehicleRate, BonusEntry, PenaltyEntry } from '../types';
+import { UserAccount, Job, VehicleRate, BonusEntry, PenaltyEntry, Car } from '../types';
 
 export const DEFAULT_USERS: UserAccount[] = [
   {
@@ -525,3 +525,27 @@ export const DEFAULT_BONUS: BonusEntry[] = [
 ];
 
 export const DEFAULT_PENALTY: PenaltyEntry[] = [];
+
+export const DEFAULT_CARS: Car[] = [
+  {
+    id: 'CAR-001',
+    code: 'D1299',
+    brand: 'Toyota Camry 7-Seater',
+    licensePlate: '3กข 1299 กรุงเทพฯ',
+    imageUrl: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=600&auto=format&fit=crop&q=60'
+  },
+  {
+    id: 'CAR-002',
+    code: 'D6662',
+    brand: 'Toyota Camry Deluxe',
+    licensePlate: '5กข 6662 กรุงเทพฯ',
+    imageUrl: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=600&auto=format&fit=crop&q=60'
+  },
+  {
+    id: 'CAR-003',
+    code: 'D6762',
+    brand: 'Toyota Fortuner SUV',
+    licensePlate: '7กข 6762 กรุงเทพฯ',
+    imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=600&auto=format&fit=crop&q=60'
+  }
+];

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
-import { UserAccount, Job, VehicleRate, BonusEntry, PenaltyEntry, AppTab } from './types';
+import { UserAccount, Job, VehicleRate, BonusEntry, PenaltyEntry, AppTab, Car } from './types';
 import SpreadsheetSync from './components/SpreadsheetSync';
 import DashboardView from './components/DashboardView';
 import LineImportView from './components/LineImportView';
@@ -11,6 +11,8 @@ import PenaltyView from './components/PenaltyView';
 import ReportsView from './components/ReportsView';
 import DriversView from './components/DriversView';
 import SettingsView from './components/SettingsView';
+import CarsView from './components/CarsView';
+import { DEFAULT_CARS } from './lib/seed';
 import {
   LayoutDashboard,
   Clipboard,
@@ -25,7 +27,8 @@ import {
   RefreshCw,
   ShieldCheck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Car as CarIcon
 } from 'lucide-react';
 
 
@@ -104,6 +107,23 @@ const mapPenaltyToDB = (p: PenaltyEntry) => ({
   reason: p.reason || ''
 });
 
+const mapCarFromDB = (c: any): Car => ({
+  id: c.id,
+  code: c.code || '',
+  brand: c.brand || '',
+  licensePlate: c.license_plate || '',
+  imageUrl: c.image_url || '',
+  createdAt: c.created_at || ''
+});
+
+const mapCarToDB = (c: Car) => ({
+  id: c.id,
+  code: c.code || '',
+  brand: c.brand || '',
+  license_plate: c.licensePlate || '',
+  image_url: c.imageUrl || ''
+});
+
 export default function App() {
   // Navigation (Default to dashboard)
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
@@ -139,6 +159,7 @@ export default function App() {
   const [rates, setRates] = useState<VehicleRate[]>([]);
   const [bonuses, setBonuses] = useState<BonusEntry[]>([]);
   const [penalties, setPenalties] = useState<PenaltyEntry[]>([]);
+  const [cars, setCars] = useState<Car[]>([]);
 
   // Fetch all values from Supabase Cloud DB
   const loadSupabaseData = useCallback(async () => {
@@ -164,6 +185,34 @@ export default function App() {
       const { data: dbPenalties, error: penaltyErr } = await supabase.from('penalty_entries').select('*');
       if (penaltyErr) throw penaltyErr;
 
+      // Fetch Cars (with LocalStorage fallback in case database table is not created yet)
+      let mappedCars: Car[] = [];
+      try {
+        const { data: dbCars, error: carsErr } = await supabase.from('cars').select('*');
+        if (carsErr) {
+          console.warn("Supabase 'cars' table fetch error. Falling back to local state.", carsErr.message);
+          const localCarsStr = localStorage.getItem('local_cars');
+          if (localCarsStr) {
+            mappedCars = JSON.parse(localCarsStr);
+          } else {
+            mappedCars = DEFAULT_CARS;
+            localStorage.setItem('local_cars', JSON.stringify(DEFAULT_CARS));
+          }
+        } else {
+          mappedCars = (dbCars || []).map(mapCarFromDB);
+          localStorage.setItem('local_cars', JSON.stringify(mappedCars));
+        }
+      } catch (carFetchErr: any) {
+        console.error("Exception fetching cars:", carFetchErr);
+        const localCarsStr = localStorage.getItem('local_cars');
+        if (localCarsStr) {
+          mappedCars = JSON.parse(localCarsStr);
+        } else {
+          mappedCars = DEFAULT_CARS;
+          localStorage.setItem('local_cars', JSON.stringify(DEFAULT_CARS));
+        }
+      }
+
       const mappedUsers = (dbUsers || []).map((u: any) => ({
         id: u.id,
         name: u.name,
@@ -183,6 +232,7 @@ export default function App() {
       setJobs(mappedJobs);
       setBonuses(mappedBonuses);
       setPenalties(mappedPenalties);
+      setCars(mappedCars);
 
       setDbError(null);
     } catch (err: any) {
@@ -234,6 +284,69 @@ export default function App() {
       await loadSupabaseData();
     } catch (err: any) {
       alert(`ไม่สามารถลบพนักงานขับรถได้: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSaveCar = async (car: Car) => {
+    setIsSyncing(true);
+    try {
+      const dbPayload = mapCarToDB(car);
+      const { error } = await supabase.from('cars').upsert(dbPayload);
+      if (error) {
+        console.warn("Supabase save car failed. Falling back to local state.", error.message);
+        const localCarsStr = localStorage.getItem('local_cars');
+        let currentCars: Car[] = localCarsStr ? JSON.parse(localCarsStr) : [];
+        const index = currentCars.findIndex(c => c.id === car.id);
+        if (index >= 0) {
+          currentCars[index] = car;
+        } else {
+          currentCars.push(car);
+        }
+        localStorage.setItem('local_cars', JSON.stringify(currentCars));
+        setCars(currentCars);
+      } else {
+        await loadSupabaseData();
+      }
+    } catch (err: any) {
+      console.warn("Save car failed. Falling back to local state.", err);
+      const localCarsStr = localStorage.getItem('local_cars');
+      let currentCars: Car[] = localCarsStr ? JSON.parse(localCarsStr) : [];
+      const index = currentCars.findIndex(c => c.id === car.id);
+      if (index >= 0) {
+        currentCars[index] = car;
+      } else {
+        currentCars.push(car);
+      }
+      localStorage.setItem('local_cars', JSON.stringify(currentCars));
+      setCars(currentCars);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDeleteCar = async (id: string) => {
+    setIsSyncing(true);
+    try {
+      const { error } = await supabase.from('cars').delete().eq('id', id);
+      if (error) {
+        console.warn("Supabase delete car failed. Falling back to local state.", error.message);
+        const localCarsStr = localStorage.getItem('local_cars');
+        let currentCars: Car[] = localCarsStr ? JSON.parse(localCarsStr) : [];
+        currentCars = currentCars.filter(c => c.id !== id);
+        localStorage.setItem('local_cars', JSON.stringify(currentCars));
+        setCars(currentCars);
+      } else {
+        await loadSupabaseData();
+      }
+    } catch (err: any) {
+      console.warn("Delete car failed. Falling back to local state.", err);
+      const localCarsStr = localStorage.getItem('local_cars');
+      let currentCars: Car[] = localCarsStr ? JSON.parse(localCarsStr) : [];
+      currentCars = currentCars.filter(c => c.id !== id);
+      localStorage.setItem('local_cars', JSON.stringify(currentCars));
+      setCars(currentCars);
     } finally {
       setIsSyncing(false);
     }
@@ -585,6 +698,19 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setActiveTab('cars')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
+              activeTab === 'cars'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+            }`}
+            id="tab-cars"
+          >
+            <CarIcon className="h-4 w-4" />
+            ข้อมูลรถ ({cars.length})
+          </button>
+
+          <button
             onClick={() => setActiveTab('bonus')}
             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               activeTab === 'bonus'
@@ -707,6 +833,19 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => handleTabChange('cars')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                activeTab === 'cars'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 active:bg-slate-50'
+              }`}
+              id="mobile-tab-cars"
+            >
+              <CarIcon className="h-4 w-4 shrink-0" />
+              ข้อมูลรถ ({cars.length})
+            </button>
+
+            <button
               onClick={() => handleTabChange('bonus')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'bonus'
@@ -779,6 +918,7 @@ export default function App() {
             <JobsView
               jobs={jobs}
               rates={rates}
+              cars={cars}
               onSaveJob={handleSaveJob}
               onDeleteJob={handleDeleteJob}
               onNavigateToTab={(tab) => setActiveTab(tab)}
@@ -791,6 +931,14 @@ export default function App() {
               rates={rates}
               onSaveRate={handleSaveRate}
               onDeleteRate={handleDeleteRate}
+            />
+          )}
+
+          {activeTab === 'cars' && (
+            <CarsView
+              cars={cars}
+              onSaveCar={handleSaveCar}
+              onDeleteCar={handleDeleteCar}
             />
           )}
 

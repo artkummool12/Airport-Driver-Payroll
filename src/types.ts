@@ -52,6 +52,15 @@ export interface SystemLog {
   details: string;
 }
 
+export interface Car {
+  id: string;            // UUID or system code
+  code: string;          // ทะเบียนรถ/รหัสรถ เช่น D1299, D6662, D6762
+  brand: string;         // ยี่ห้อ/รุ่น เช่น Toyota Camry
+  licensePlate: string;  // ทะเบียนจริง เช่น 3กข 1299 กรุงเทพฯ
+  imageUrl?: string;     // รูปภาพรถ (Base64 หรือ URL)
+  createdAt?: string;
+}
+
 export type AppTab =
   | 'dashboard'
   | 'line-import'
@@ -63,6 +72,7 @@ export type AppTab =
   | 'rates'
   | 'bonus'
   | 'penalty'
+  | 'cars'
   | 'users'
   | 'settings'
   | 'logs';

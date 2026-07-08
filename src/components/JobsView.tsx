@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Job, VehicleRate, getCleanJobId } from '../types';
+import { Job, VehicleRate, getCleanJobId, Car } from '../types';
 import {
   Search,
   Plus,
@@ -42,6 +42,7 @@ import {
 interface JobsViewProps {
   jobs: Job[];
   rates: VehicleRate[];
+  cars?: Car[];
   onSaveJob: (job: Job) => Promise<void>;
   onDeleteJob: (jobId: string) => Promise<void>;
   onNavigateToTab: (tab: any) => void;
@@ -77,11 +78,22 @@ const formatDateDMY = (dateStr: string) => {
 export default function JobsView({
   jobs,
   rates,
+  cars,
   onSaveJob,
   onDeleteJob,
   onNavigateToTab,
   currentUserEmail
 }: JobsViewProps) {
+  // Cars list fallback setup
+  const carsList = useMemo(() => {
+    if (cars && cars.length > 0) return cars;
+    return [
+      { id: 'CAR-001', code: 'D1299', brand: 'Toyota Camry 7-Seater', licensePlate: '3กข 1299 กรุงเทพฯ' },
+      { id: 'CAR-002', code: 'D6662', brand: 'Toyota Camry Deluxe', licensePlate: '5กข 6662 กรุงเทพฯ' },
+      { id: 'CAR-003', code: 'D6762', brand: 'Toyota Fortuner SUV', licensePlate: '7กข 6762 กรุงเทพฯ' }
+    ];
+  }, [cars]);
+
   // Filters
   const [search, setSearch] = useState('');
   const [selectedAirport, setSelectedAirport] = useState('All');
@@ -94,6 +106,8 @@ export default function JobsView({
 
   // Form Fields
   const [jobId, setJobId] = useState('');
+  const [selectedCarCode, setSelectedCarCode] = useState('D1299');
+  const [selectedRoundCode, setSelectedRoundCode] = useState('-01');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [vehicleCode, setVehicleCode] = useState('');
@@ -254,7 +268,10 @@ export default function JobsView({
 
   const handleOpenAddForm = () => {
     setEditingJob(null);
-    setJobId(`D${Math.floor(1000 + Math.random() * 9000)}-01`);
+    const firstCar = carsList[0]?.code || 'D1299';
+    setSelectedCarCode(firstCar);
+    setSelectedRoundCode('-01');
+    setJobId(`${firstCar}-01`);
     const now = new Date();
     setDate(now.toISOString().split('T')[0]);
     setTime(now.toTimeString().substring(0, 5));
@@ -271,6 +288,17 @@ export default function JobsView({
   const handleOpenEditForm = (job: Job) => {
     setEditingJob(job);
     setJobId(job.id);
+
+    // Extract plate/car code and run index suffix from job.id if matching standard pattern like D1299-01
+    const match = job.id.match(/^([A-Za-z0-9]+)(-\d+)/);
+    if (match) {
+      setSelectedCarCode(match[1]);
+      setSelectedRoundCode(match[2]);
+    } else {
+      setSelectedCarCode('D1299');
+      setSelectedRoundCode('-01');
+    }
+
     setDate(job.date);
     setTime(job.time);
     setVehicleCode(job.vehicleCode);
@@ -825,6 +853,46 @@ export default function JobsView({
             </div>
 
             <form onSubmit={handleFormSubmit} className="p-5 overflow-y-auto space-y-4 text-xs font-sans">
+              {/* Select Car and Round to generate Clean Job ID */}
+              <div className="grid grid-cols-2 gap-4 bg-indigo-50/40 p-3.5 rounded-2xl border border-indigo-100">
+                <div>
+                  <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">ทะเบียนรถ (Vehicle Plate) *</label>
+                  <select
+                    required
+                    value={selectedCarCode}
+                    onChange={(e) => {
+                      const newCar = e.target.value;
+                      setSelectedCarCode(newCar);
+                      setJobId(`${newCar}${selectedRoundCode}`);
+                    }}
+                    className="w-full px-3 py-2 border border-indigo-200 bg-white rounded-xl text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    id="form-job-car-select"
+                  >
+                    {carsList.map(c => (
+                      <option key={c.code} value={c.code}>{c.code} ({c.brand})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">รอบวิ่งที่ (Round) *</label>
+                  <select
+                    required
+                    value={selectedRoundCode}
+                    onChange={(e) => {
+                      const newRound = e.target.value;
+                      setSelectedRoundCode(newRound);
+                      setJobId(`${selectedCarCode}${newRound}`);
+                    }}
+                    className="w-full px-3 py-2 border border-indigo-200 bg-white rounded-xl text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    id="form-job-round-select"
+                  >
+                    {['-01', '-02', '-03', '-04', '-05', '-06', '-07', '-08', '-09', '-10'].map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">วันที่ปฏิบัติงาน (Date)</label>
