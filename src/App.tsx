@@ -622,19 +622,6 @@ export default function App() {
             <Users className="h-4 w-4" />
             รายชื่อพนักงาน
           </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
-              activeTab === 'settings'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
-            }`}
-            id="tab-settings"
-          >
-            <Settings className="h-4 w-4" />
-            คู่มือระบบ
-          </button>
         </div>
 
         {/* 100% Thai Navigation Menu (Mobile Bottom Nav) */}
@@ -756,19 +743,6 @@ export default function App() {
             >
               <Users className="h-4 w-4 shrink-0" />
               รายชื่อพนักงาน
-            </button>
-
-            <button
-              onClick={() => handleTabChange('settings')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                activeTab === 'settings'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 active:bg-slate-50'
-              }`}
-              id="mobile-tab-settings"
-            >
-              <Settings className="h-4 w-4 shrink-0" />
-              คู่มือระบบ
             </button>
           </div>
 

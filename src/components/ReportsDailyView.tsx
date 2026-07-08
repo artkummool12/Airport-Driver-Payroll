@@ -15,11 +15,18 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
   }, [jobs]);
 
   const [selectedDate, setSelectedDate] = useState(() => {
-    return availableDates[0] || new Date().toISOString().split('T')[0];
+    return availableDates[0] || '';
   });
 
   // Filter jobs for selected date
   const dailyJobs = useMemo(() => {
+    if (!selectedDate) {
+      return [...jobs].sort((a, b) => {
+        const dateCompare = b.date.localeCompare(a.date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.time.localeCompare(b.time);
+      });
+    }
     return jobs
       .filter(j => j.date === selectedDate)
       .sort((a, b) => a.time.localeCompare(b.time));
@@ -94,27 +101,52 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
   return (
     <div className="space-y-6">
       {/* Selector Header */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Calendar className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">เลือกวันที่สรุปรายงาน</span>
-            <div className="flex items-center gap-2 mt-0.5">
-              <input
-                type="date"
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">เลือกสรุปข้อมูลแบบด่วน</span>
+              <select
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 font-mono"
-              />
+                className="mt-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 font-sans cursor-pointer"
+              >
+                <option value="">📁 — แสดงทั้งหมด (ทุกวัน) —</option>
+                {availableDates.map(d => (
+                  <option key={d} value={d}>📅 {formatDateTH(d)}</option>
+                ))}
+              </select>
             </div>
           </div>
+
+          <div className="h-px sm:h-8 w-full sm:w-px bg-slate-200"></div>
+
+          <div>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">ระบุวันที่ละเอียด</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="mt-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 font-mono cursor-pointer"
+            />
+          </div>
+
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate('')}
+              className="mt-4 sm:mt-5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+            >
+              แสดงทั้งหมด
+            </button>
+          )}
         </div>
 
         <button
           onClick={handlePrint}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer shrink-0"
         >
           <Printer className="h-4 w-4" />
           พิมพ์ใบสรุปรายงานรายวัน (PDF)
@@ -127,7 +159,7 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
           <h1 className="text-xl font-black text-slate-900">ระบบคำนวณรายได้พนักงานขับรถรับ-ส่งสนามบิน</h1>
           <p className="text-xs text-slate-500 mt-1">รายงานสรุปงานวิ่งและค่าเที่ยวสะสมรายวันแบบละเอียด</p>
           <p className="text-xs font-mono font-bold text-indigo-700 mt-2 bg-indigo-50 inline-block px-4 py-1.5 rounded-full">
-            ประจำวันที่: {formatDateTH(selectedDate)}
+            ประจำวันที่: {selectedDate ? formatDateTH(selectedDate) : 'ทั้งหมด (ทุกวัน)'}
           </p>
         </div>
 
@@ -259,7 +291,7 @@ export default function ReportsDailyView({ jobs }: ReportsDailyViewProps) {
           <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
             <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <FileText className="h-4.5 w-4.5 text-indigo-500" />
-              รายการปฏิบัติงานวิ่งรถ ประจำวันที่ {formatDateTH(selectedDate)}
+              รายการปฏิบัติงานวิ่งรถ ประจำวันที่ {selectedDate ? formatDateTH(selectedDate) : 'ทั้งหมด (ทุกวัน)'}
             </h4>
             <span className="text-[10.5px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full font-mono">
               {daySubtotals.trips} เที่ยววิ่ง

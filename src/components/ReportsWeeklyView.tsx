@@ -57,18 +57,22 @@ export default function ReportsWeeklyView({ jobs, rates }: ReportsWeeklyViewProp
   }, [jobs]);
 
   // Active week state
-  const [selectedWeekIdx, setSelectedWeekIdx] = useState(0);
+  const [selectedWeekIdx, setSelectedWeekIdx] = useState<number | 'all'>(0);
 
   const activeWeek = useMemo(() => {
+    if (selectedWeekIdx === 'all') return null;
     if (payrollWeeks.length === 0) return null;
     return payrollWeeks[selectedWeekIdx] || payrollWeeks[0];
   }, [payrollWeeks, selectedWeekIdx]);
 
   // Filter jobs for the selected week
   const filteredJobs = useMemo(() => {
+    if (selectedWeekIdx === 'all') {
+      return [...jobs].sort((a, b) => b.date.localeCompare(a.date));
+    }
     if (!activeWeek) return [];
     return jobs.filter(j => j.date >= activeWeek.start && j.date <= activeWeek.end);
-  }, [jobs, activeWeek]);
+  }, [jobs, activeWeek, selectedWeekIdx]);
 
   // Group filtered jobs by day of week (Wed to Tue)
   const groupedJobsByDay = useMemo(() => {
@@ -91,7 +95,7 @@ export default function ReportsWeeklyView({ jobs, rates }: ReportsWeeklyViewProp
 
     // If an item doesn't have an explicit dateStr in database, calculate it from active week start
     PAYROLL_DAYS_ORDER.forEach((dayNum, index) => {
-      if (activeWeek && !groups[dayNum].dateStr) {
+      if (selectedWeekIdx !== 'all' && activeWeek && !groups[dayNum].dateStr) {
         const start = new Date(activeWeek.start);
         start.setDate(start.getDate() + index);
         groups[dayNum].dateStr = start.toISOString().split('T')[0];
@@ -101,7 +105,7 @@ export default function ReportsWeeklyView({ jobs, rates }: ReportsWeeklyViewProp
     });
 
     return PAYROLL_DAYS_ORDER.map(dNum => groups[dNum]);
-  }, [filteredJobs, activeWeek]);
+  }, [filteredJobs, activeWeek, selectedWeekIdx]);
 
   // Grand totals
   const grandTotals = useMemo(() => {
@@ -167,7 +171,7 @@ export default function ReportsWeeklyView({ jobs, rates }: ReportsWeeklyViewProp
     document.body.removeChild(link);
   };
 
-  if (!activeWeek) {
+  if (selectedWeekIdx !== 'all' && !activeWeek) {
     return (
       <div className="bg-white p-12 text-center rounded-2xl border border-slate-100 text-slate-400">
         ยังไม่มีข้อมูลงานวิ่งรถสำหรับจัดกลุ่มรายสัปดาห์ กรุณานำเข้าข้อมูลดิบจาก LINE หรือเพิ่มงานวิ่งก่อน
@@ -206,39 +210,73 @@ export default function ReportsWeeklyView({ jobs, rates }: ReportsWeeklyViewProp
     <div className="space-y-6">
       {/* Week Selector Header */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Calendar className="h-5 w-5" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">เลือกช่วงเวลารายสัปดาห์</span>
+              <select
+                value={selectedWeekIdx}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedWeekIdx(val === 'all' ? 'all' : parseInt(val));
+                }}
+                className="mt-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 font-sans cursor-pointer"
+              >
+                <option value="all">📁 — แสดงทุกสัปดาห์ (ทั้งหมด) —</option>
+                {payrollWeeks.map((week, idx) => (
+                  <option key={idx} value={idx}>
+                    📅 สัปดาห์ {idx + 1}: {formatDateTH(week.start)} — {formatDateTH(week.end)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">รอบคำนวณเงินเดือนพนักงานขับรถรายสัปดาห์ (พุธ - อังคาร)</span>
-            <h3 className="text-sm font-black text-slate-800">
-              สัปดาห์: {formatDateTHLong(activeWeek.start)} — {formatDateTHLong(activeWeek.end)}
-            </h3>
-          </div>
+
+          {selectedWeekIdx !== 'all' && (
+            <>
+              <div className="h-px sm:h-8 w-full sm:w-px bg-slate-200"></div>
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">
+                <button
+                  onClick={() => setSelectedWeekIdx(prev => {
+                    if (prev === 'all') return 0;
+                    return Math.min(payrollWeeks.length - 1, prev + 1);
+                  })}
+                  disabled={selectedWeekIdx === 'all' || selectedWeekIdx >= payrollWeeks.length - 1}
+                  className="p-1 hover:bg-slate-200 rounded-md disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4 text-slate-600" />
+                </button>
+                <span className="text-xs font-black text-slate-700 font-mono">
+                  สัปดาห์ {selectedWeekIdx + 1} / {payrollWeeks.length}
+                </span>
+                <button
+                  onClick={() => setSelectedWeekIdx(prev => {
+                    if (prev === 'all') return 0;
+                    return Math.max(0, prev - 1);
+                  })}
+                  disabled={selectedWeekIdx === 'all' || selectedWeekIdx <= 0}
+                  className="p-1 hover:bg-slate-200 rounded-md disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronRight className="h-4 w-4 text-slate-600" />
+                </button>
+              </div>
+            </>
+          )}
+
+          {selectedWeekIdx === 'all' && (
+            <button
+              onClick={() => setSelectedWeekIdx(0)}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+            >
+              ดูสัปดาห์ล่าสุด
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">
-            <button
-              onClick={() => setSelectedWeekIdx(prev => Math.min(payrollWeeks.length - 1, prev + 1))}
-              disabled={selectedWeekIdx >= payrollWeeks.length - 1}
-              className="p-1 hover:bg-slate-200 rounded-md disabled:opacity-30 cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4 text-slate-600" />
-            </button>
-            <span className="text-xs font-black text-slate-700 font-mono">
-              สัปดาห์ {selectedWeekIdx + 1} / {payrollWeeks.length}
-            </span>
-            <button
-              onClick={() => setSelectedWeekIdx(prev => Math.max(0, prev - 1))}
-              disabled={selectedWeekIdx <= 0}
-              className="p-1 hover:bg-slate-200 rounded-md disabled:opacity-30 cursor-pointer"
-            >
-              <ChevronRight className="h-4 w-4 text-slate-600" />
-            </button>
-          </div>
-
           <button
             onClick={handlePrint}
             className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
@@ -263,7 +301,7 @@ export default function ReportsWeeklyView({ jobs, rates }: ReportsWeeklyViewProp
           <h1 className="text-xl font-black text-slate-900">ระบบคำนวณรายได้พนักงานขับรถรับ-ส่งสนามบิน</h1>
           <p className="text-xs text-slate-500 mt-1">รายงานสรุปผลการทำงานและค่าจ้างรายสัปดาห์ (รอบวันพุธ - วันอังคาร)</p>
           <p className="text-xs font-mono text-indigo-700 mt-2 bg-indigo-50 inline-block px-4 py-1.5 rounded-full font-bold">
-            รอบบิลวันที่: {formatDateTHLong(activeWeek.start)} — {formatDateTHLong(activeWeek.end)}
+            รอบบิลวันที่: {activeWeek ? `${formatDateTHLong(activeWeek.start)} — ${formatDateTHLong(activeWeek.end)}` : 'ทั้งหมด (ทุกสัปดาห์)'}
           </p>
         </div>
 

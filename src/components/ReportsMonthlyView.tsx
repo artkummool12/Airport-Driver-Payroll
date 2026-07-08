@@ -20,11 +20,14 @@ export default function ReportsMonthlyView({ jobs }: ReportsMonthlyViewProps) {
   }, [jobs]);
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    return availableMonths[0] || new Date().toISOString().substring(0, 7);
+    return availableMonths[0] || '';
   });
 
   // Filter jobs for selected month
   const monthlyJobs = useMemo(() => {
+    if (!selectedMonth || selectedMonth === 'all') {
+      return [...jobs].sort((a, b) => b.date.localeCompare(a.date));
+    }
     return jobs.filter(j => j.date.startsWith(selectedMonth));
   }, [jobs, selectedMonth]);
 
@@ -155,15 +158,16 @@ export default function ReportsMonthlyView({ jobs }: ReportsMonthlyViewProps) {
             <Calendar className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">เลือกประจำเดือนสรุปรายงาน</span>
-            <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">เลือกประจำเดือนสรุปรายงาน</span>
+            <div className="flex items-center gap-2 mt-1">
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 font-mono"
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 font-sans cursor-pointer"
               >
+                <option value="all">📁 — แสดงทุกเดือน (ทั้งหมด) —</option>
                 {availableMonths.map(m => (
-                  <option key={m} value={m}>{formatMonthNameTH(m)}</option>
+                  <option key={m} value={m}>📅 {formatMonthNameTH(m)}</option>
                 ))}
               </select>
             </div>
@@ -194,7 +198,7 @@ export default function ReportsMonthlyView({ jobs }: ReportsMonthlyViewProps) {
           <h1 className="text-xl font-black text-slate-900">ระบบคำนวณรายได้พนักงานขับรถรับ-ส่งสนามบิน</h1>
           <p className="text-xs text-slate-500 mt-1">รายงานผลการทำงาน และค่าจ้างประจำเดือนรวมสะสมแบบย่อ</p>
           <p className="text-xs font-bold text-indigo-700 mt-2 bg-indigo-50 inline-block px-4 py-1.5 rounded-full">
-            รอบบิลประจำเดือน: {formatMonthNameTH(selectedMonth)}
+            รอบบิลประจำเดือน: {selectedMonth && selectedMonth !== 'all' ? formatMonthNameTH(selectedMonth) : 'ทั้งหมด (ทุกเดือน)'}
           </p>
         </div>
 
