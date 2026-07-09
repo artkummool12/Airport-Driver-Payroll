@@ -165,6 +165,10 @@ export default function LineImportView({ rates, onImportJobs, currentUserEmail }
           if (
             route.includes('เมืองทอง') ||
             route.includes('หลักสี่') ||
+            route.includes('แจ้งวัฒนะ') ||
+            route.includes('ดอนเมือง') ||
+            route.includes('ปากเกร็ด') ||
+            route.includes('สะพานใหม่') ||
             (route.includes('แอร์สุ') && route.includes('ดอน'))
           ) {
             bonus += 100;
@@ -195,6 +199,8 @@ export default function LineImportView({ rates, onImportJobs, currentUserEmail }
             netIncome,
             createdBy: currentUserEmail,
             createdDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            isExternal: false,
+            isPaid: false,
           } as any);
         }
       }
