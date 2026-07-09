@@ -117,12 +117,15 @@ export default function LineImportView({ rates, onImportJobs, currentUserEmail }
           }
 
           // Base rate price resolution based on user's custom formula:
-          // If vehicleCode contains 7s, 7bk, cam, 7p (case insensitive) -> 500
-          // If vehicleCode contains 5s, 5p, 5bk (case insensitive) -> 400
-          // Else fall back to matching rates or 0
+          // 1. First prioritize matching registered rates (exact or case-insensitive)
+          // 2. Next, apply standard category heuristics
+          // 3. Fallback to loose substring matches to ensure no missing prices (0)
           const lowerCode = vehicleCode.toLowerCase();
           let baseFare = 0;
-          if (
+          const matchedRate = rates.find(r => r.vehicleCode.toLowerCase() === lowerCode);
+          if (matchedRate) {
+            baseFare = matchedRate.price;
+          } else if (
             lowerCode.includes('7s') ||
             lowerCode.includes('7bk') ||
             lowerCode.includes('cam') ||
@@ -136,9 +139,15 @@ export default function LineImportView({ rates, onImportJobs, currentUserEmail }
           ) {
             baseFare = 400;
           } else {
-            const matchedRate = rates.find(r => r.vehicleCode.toLowerCase() === lowerCode);
-            if (matchedRate) {
-              baseFare = matchedRate.price;
+            const looseMatch = rates.find(r => 
+              lowerCode.includes(r.vehicleCode.toLowerCase()) || 
+              r.vehicleCode.toLowerCase().includes(lowerCode)
+            );
+            if (looseMatch) {
+              baseFare = looseMatch.price;
+            } else {
+              // Standard safe defaults based on vehicle prefix/suffix or default to 400
+              baseFare = lowerCode.includes('7') ? 500 : 400;
             }
           }
 

@@ -121,6 +121,10 @@ export default function JobsView({
   const [baseFare, setBaseFare] = useState<number | ''>('');
   const [bonus, setBonus] = useState<number>(0);
   const [penalty, setPenalty] = useState<number>(0);
+  const [isExternal, setIsExternal] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [isCustomId, setIsCustomId] = useState(false);
+  const [customId, setCustomId] = useState('');
 
   // Handle Vehicle Code select changes to auto-populate default rate price
   const handleVehicleCodeChange = (code: string) => {
@@ -137,14 +141,14 @@ export default function JobsView({
     const b = Number(bonus) || 0;
     const p = Number(penalty) || 0;
     const taxableAmount = Math.max(0, fare + b - p);
-    const tax = taxableAmount * 0.05;
-    const net = taxableAmount - tax;
+    const tax = isExternal ? 0 : taxableAmount * 0.05;
+    const net = isExternal ? (fare + b - p) : (taxableAmount - tax);
 
     return {
       tax,
       net: Math.max(0, net)
     };
-  }, [baseFare, bonus, penalty]);
+  }, [baseFare, bonus, penalty, isExternal]);
 
   // Filtering Logic
   const filteredJobs = useMemo(() => {
@@ -157,7 +161,9 @@ export default function JobsView({
 
       const matchesAirport = selectedAirport === 'All' || job.airport === selectedAirport;
 
-      const matchesCar = selectedCarFilter === 'All' || job.id.split('-')[0].toUpperCase() === selectedCarFilter.toUpperCase();
+      const matchesCar = selectedCarFilter === 'All' || 
+        job.id.toUpperCase().startsWith(selectedCarFilter.toUpperCase()) ||
+        job.vehicleCode.toUpperCase().includes(selectedCarFilter.toUpperCase());
 
       let matchesDate = true;
       if (startDate) {
@@ -288,6 +294,10 @@ export default function JobsView({
     setBaseFare(rates[0]?.price || '');
     setBonus(0);
     setPenalty(0);
+    setIsExternal(false);
+    setNotes('');
+    setIsCustomId(false);
+    setCustomId('');
     setIsFormOpen(true);
   };
 
@@ -300,9 +310,13 @@ export default function JobsView({
     if (match) {
       setSelectedCarCode(match[1]);
       setSelectedRoundCode(match[2]);
+      setIsCustomId(false);
+      setCustomId('');
     } else {
       setSelectedCarCode('D1299');
       setSelectedRoundCode('-01');
+      setIsCustomId(true);
+      setCustomId(getCleanJobId(job.id));
     }
 
     setDate(job.date);
@@ -311,9 +325,15 @@ export default function JobsView({
     setRoute(job.route);
     setAirport(job.airport);
     setFlight(job.flight || '');
-    setBaseFare(job.baseFare);
+    
+    // Automatically adjust or correct if price is missing (or 0) using rates list or fallback defaults
+    const matched = rates.find(r => r.vehicleCode.toLowerCase() === job.vehicleCode.toLowerCase());
+    setBaseFare(job.baseFare || (matched ? matched.price : (job.vehicleCode.toLowerCase().includes('7') ? 500 : 400)));
+
     setBonus(job.bonus);
     setPenalty(job.penalty);
+    setIsExternal(!!job.isExternal);
+    setNotes(job.notes || '');
     setIsFormOpen(true);
   };
 
@@ -350,7 +370,9 @@ export default function JobsView({
       tax: parseFloat(liveCalculation.tax.toFixed(2)),
       netIncome: parseFloat(liveCalculation.net.toFixed(2)),
       createdBy: currentUserEmail,
-      createdDate: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      createdDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      isExternal,
+      notes: notes.trim() || undefined
     };
 
     await onSaveJob(finalJob);
@@ -598,9 +620,21 @@ export default function JobsView({
                           </td>
                           <td className="py-3 px-4">
                             <p className="font-semibold text-slate-800 truncate max-w-[200px]">{job.route}</p>
-                            {job.flight && (
-                              <p className="text-[9.5px] text-indigo-600 font-mono flex items-center gap-0.5 mt-0.5">
-                                ✈️ {job.flight}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {job.flight && (
+                                <span className="text-[9.5px] text-indigo-600 font-mono flex items-center gap-0.5">
+                                  ✈️ {job.flight}
+                                </span>
+                              )}
+                              {job.isExternal && (
+                                <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-1 py-0.2 rounded border border-rose-100 uppercase tracking-wider font-sans">
+                                  งานนอก (ไม่หักภาษี)
+                                </span>
+                              )}
+                            </div>
+                            {job.notes && (
+                              <p className="text-[10px] text-slate-500 italic mt-1 max-w-[200px] truncate" title={job.notes}>
+                                📝 {job.notes}
                               </p>
                             )}
                           </td>
@@ -918,44 +952,85 @@ export default function JobsView({
             </div>
 
             <form onSubmit={handleFormSubmit} className="p-5 overflow-y-auto space-y-4 text-xs font-sans">
-              {/* Select Car and Round to generate Clean Job ID */}
-              <div className="grid grid-cols-2 gap-4 bg-indigo-50/40 p-3.5 rounded-2xl border border-indigo-100">
-                <div>
-                  <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">ทะเบียนรถ (Vehicle Plate) *</label>
-                  <select
-                    required
-                    value={selectedCarCode}
+              {/* Manual/Custom Job ID Toggle */}
+              <div className="bg-indigo-50/20 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="toggle-custom-id"
+                    checked={isCustomId}
                     onChange={(e) => {
-                      const newCar = e.target.value;
-                      setSelectedCarCode(newCar);
-                      setJobId(`${newCar}${selectedRoundCode}`);
+                      const val = e.target.checked;
+                      setIsCustomId(val);
+                      if (val) {
+                        setCustomId(getCleanJobId(jobId) || '');
+                      } else {
+                        setJobId(`${selectedCarCode}${selectedRoundCode}`);
+                      }
                     }}
-                    className="w-full px-3 py-2 border border-indigo-200 bg-white rounded-xl text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    id="form-job-car-select"
-                  >
-                    {carsList.map(c => (
-                      <option key={c.code} value={c.code}>{c.code} ({c.brand})</option>
-                    ))}
-                  </select>
+                    className="h-3.5 w-3.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="toggle-custom-id" className="text-[10px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer">
+                    ระบุรหัสงานนอก / รหัสงานภายนอกเองแมนนวล (Manual Job ID)
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">รอบวิ่งที่ (Round) *</label>
-                  <select
-                    required
-                    value={selectedRoundCode}
-                    onChange={(e) => {
-                      const newRound = e.target.value;
-                      setSelectedRoundCode(newRound);
-                      setJobId(`${selectedCarCode}${newRound}`);
-                    }}
-                    className="w-full px-3 py-2 border border-indigo-200 bg-white rounded-xl text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    id="form-job-round-select"
-                  >
-                    {['-01', '-02', '-03', '-04', '-05', '-06', '-07', '-08', '-09', '-10'].map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
+
+                {isCustomId ? (
+                  <div>
+                    <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">รหัสงานที่ต้องการระบุเอง (Job ID) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="เช่น OUT-9921 หรือ JOB-A12"
+                      value={customId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomId(val);
+                        setJobId(val);
+                      }}
+                      className="w-full px-3 py-2 border border-indigo-200 bg-white rounded-xl text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">ทะเบียนรถ (Vehicle Plate) *</label>
+                      <select
+                        required
+                        value={selectedCarCode}
+                        onChange={(e) => {
+                          const newCar = e.target.value;
+                          setSelectedCarCode(newCar);
+                          setJobId(`${newCar}${selectedRoundCode}`);
+                        }}
+                        className="w-full px-3 py-2 border border-indigo-200 bg-white rounded-xl text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        id="form-job-car-select"
+                      >
+                        {carsList.map(c => (
+                          <option key={c.code} value={c.code}>{c.code} ({c.brand})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">รอบวิ่งที่ (Round) *</label>
+                      <select
+                        required
+                        value={selectedRoundCode}
+                        onChange={(e) => {
+                          const newRound = e.target.value;
+                          setSelectedRoundCode(newRound);
+                          setJobId(`${selectedCarCode}${newRound}`);
+                        }}
+                        className="w-full px-3 py-2 border border-indigo-200 bg-white rounded-xl text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        id="form-job-round-select"
+                      >
+                        {['-01', '-02', '-03', '-04', '-05', '-06', '-07', '-08', '-09', '-10'].map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1041,13 +1116,45 @@ export default function JobsView({
                 </div>
               </div>
 
+              {/* Notes & Remarks field */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1 font-sans">หมายเหตุ (Notes / Remarks)</label>
+                <textarea
+                  rows={2}
+                  placeholder="ระบุข้อมูลหมายเหตุเพิ่มเติม เช่น รายละเอียดเส้นทางเพิ่มเติม งานวิ่งนอกแมนนวล ข้อตกลงพิเศษ หรือเบอร์ติดต่อ..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder:text-slate-400 font-sans"
+                  id="form-job-notes"
+                />
+              </div>
+
+              {/* External Job toggle with styled container */}
+              <div className="flex items-center gap-3 bg-rose-50/30 p-3.5 rounded-2xl border border-rose-100/50">
+                <input
+                  type="checkbox"
+                  id="form-job-is-external"
+                  checked={isExternal}
+                  onChange={(e) => setIsExternal(e.target.checked)}
+                  className="h-4 w-4 rounded text-rose-600 focus:ring-rose-500 border-rose-300 cursor-pointer"
+                />
+                <div className="space-y-0.5 cursor-pointer" onClick={() => setIsExternal(!isExternal)}>
+                  <label htmlFor="form-job-is-external" className="block text-xs font-bold text-rose-950 cursor-pointer font-sans">
+                    งานนอกแมนนวล (External Job - ไม่หักภาษี 5%)
+                  </label>
+                  <p className="text-[10px] text-rose-600 font-sans">เมื่อเลือกตัวเลือกนี้ ระบบจะไม่นำรายรับเที่ยววิ่งรอบนี้ไปประมวลผลหักภาษี 5%</p>
+                </div>
+              </div>
+
               {/* Financial Inputs */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">คำนวณรายจ่ายและหักภาษี 5% อัตโนมัติ</h5>
+                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-sans">
+                  {isExternal ? 'คำนวณรายจ่ายเที่ยววิ่งพิเศษ (ยกเว้นภาษี)' : 'คำนวณรายจ่ายและหักภาษี 5% อัตโนมัติ'}
+                </h5>
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">ค่างานต่องาน (บาท)</label>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1 font-sans">ค่างานต่องาน (บาท)</label>
                     <input
                       type="number"
                       required
@@ -1059,7 +1166,7 @@ export default function JobsView({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">บวกเพิ่ม (Bonus - บาท)</label>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1 font-sans">บวกเพิ่ม (Bonus - บาท)</label>
                     <input
                       type="number"
                       min="0"
@@ -1070,7 +1177,7 @@ export default function JobsView({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">ค่าปรับพนักงาน (บาท)</label>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1 font-sans">ค่าปรับพนักงาน (บาท)</label>
                     <input
                       type="number"
                       min="0"
@@ -1082,14 +1189,25 @@ export default function JobsView({
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-500 font-sans">
                   <div>
-                    <p>หักภาษี ณ ที่จ่าย: <span className="text-rose-600 font-bold">5%</span></p>
-                    <p className="text-[9px] text-slate-400 mt-0.5">สูตร: (ค่างาน + โบนัส - ค่าปรับ) × 5%</p>
+                    {isExternal ? (
+                      <>
+                        <p className="text-emerald-600 font-bold">ยกเว้นหักภาษี (งานนอก)</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">สูตร: ค่างาน + โบนัส - ค่าปรับ</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>หักภาษี ณ ที่จ่าย: <span className="text-rose-600 font-bold">5%</span></p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">สูตร: (ค่างาน + โบนัส - ค่าปรับ) × 5%</p>
+                      </>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] text-slate-400 font-bold uppercase">ภาษีหัก ณ ที่จ่าย 5%</p>
-                    <p className="text-xs font-bold text-rose-600 font-mono">฿{liveCalculation.tax.toFixed(2)}</p>
+                    <p className={`text-xs font-bold font-mono ${isExternal ? 'text-slate-300 line-through' : 'text-rose-600'}`}>
+                      ฿{liveCalculation.tax.toFixed(2)}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] text-indigo-500 font-bold uppercase">ยอดเงินคนขับรับสุทธิ</p>

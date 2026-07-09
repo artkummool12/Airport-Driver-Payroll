@@ -22,6 +22,8 @@ export interface Job {
   netIncome: number;   // Net income after tax
   createdBy: string;   // Creator Google Email
   createdDate: string; // Creation timestamp YYYY-MM-DD HH:MM
+  isExternal?: boolean; // External job without tax deduction
+  notes?: string;      // Remarks/notes
 }
 
 export interface VehicleRate {
