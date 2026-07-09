@@ -381,6 +381,28 @@ export default function App() {
     }
   };
 
+  const handleDeleteAllJobs = async () => {
+    setIsSyncing(true);
+    try {
+      // First delete bonus and penalty entries referencing jobs to avoid foreign key violations if they exist
+      const { error: bErr } = await supabase.from('bonus_entries').delete().neq('id', '');
+      if (bErr) console.warn("Could not delete bonus entries:", bErr.message);
+
+      const { error: pErr } = await supabase.from('penalty_entries').delete().neq('id', '');
+      if (pErr) console.warn("Could not delete penalty entries:", pErr.message);
+
+      // Now delete all jobs
+      const { error } = await supabase.from('jobs').delete().neq('id', '');
+      if (error) throw error;
+
+      await loadSupabaseData();
+    } catch (err: any) {
+      alert(`ไม่สามารถลบเที่ยววิ่งทั้งหมดได้: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSaveRate = async (rate: VehicleRate) => {
     setIsSyncing(true);
     try {
@@ -921,6 +943,7 @@ export default function App() {
               cars={cars}
               onSaveJob={handleSaveJob}
               onDeleteJob={handleDeleteJob}
+              onDeleteAllJobs={handleDeleteAllJobs}
               onNavigateToTab={(tab) => setActiveTab(tab)}
               currentUserEmail="it.sumino.apico@gmail.com"
             />

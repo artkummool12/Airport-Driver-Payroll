@@ -21,7 +21,8 @@ import {
   Percent,
   Briefcase,
   TrendingDown,
-  FileText
+  FileText,
+  RotateCcw
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -45,6 +46,7 @@ interface JobsViewProps {
   cars?: Car[];
   onSaveJob: (job: Job) => Promise<void>;
   onDeleteJob: (jobId: string) => Promise<void>;
+  onDeleteAllJobs?: () => Promise<void>;
   onNavigateToTab: (tab: any) => void;
   currentUserEmail: string;
 }
@@ -81,6 +83,7 @@ export default function JobsView({
   cars,
   onSaveJob,
   onDeleteJob,
+  onDeleteAllJobs,
   onNavigateToTab,
   currentUserEmail
 }: JobsViewProps) {
@@ -365,6 +368,25 @@ export default function JobsView({
     return monthStr;
   }
 
+  const handleClearFilters = () => {
+    setSearch('');
+    setSelectedAirport('All');
+    setSelectedCarFilter('All');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const handleDeleteAll = async () => {
+    if (!onDeleteAllJobs) return;
+    const confirm1 = window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลเที่ยวงานทั้งหมด? (การดำเนินการนี้ไม่สามารถย้อนกลับได้)');
+    if (confirm1) {
+      const confirm2 = window.confirm('โปรดยืนยันอีกครั้ง! ระบบจะลบเที่ยวงานวิ่ง ข้อมูลโบนัส และข้อมูลค่าปรับทั้งหมดที่เกี่ยวข้องออกถาวร');
+      if (confirm2) {
+        await onDeleteAllJobs();
+      }
+    }
+  };
+
   return (
     <div className="space-y-6 font-sans">
       {/* Quick link button to LINE copy paste converter & add new trip */}
@@ -385,18 +407,30 @@ export default function JobsView({
 
           <button
             onClick={handleOpenAddForm}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
             id="btn-add-job"
           >
             <Plus className="h-4 w-4" />
             เพิ่มงานวิ่งแมนนวล
           </button>
+
+          {onDeleteAllJobs && jobs.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="px-4 py-2 border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              id="btn-delete-all-jobs"
+              title="ลบข้อมูลเที่ยวงานทั้งหมดออกจากระบบ"
+            >
+              <Trash2 className="h-4 w-4" />
+              ลบเที่ยวงานทั้งหมด
+            </button>
+          )}
         </div>
       </div>
 
       {/* Filter panel */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
@@ -457,6 +491,18 @@ export default function JobsView({
               className="py-2 px-3.5 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-mono"
               placeholder="วันที่สิ้นสุด"
             />
+          </div>
+
+          <div>
+            <button
+              onClick={handleClearFilters}
+              className="py-2 px-3.5 w-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer h-full min-h-[36px]"
+              id="btn-clear-filters"
+              title="เคลียร์ข้อมูลการค้นหาและตัวกรองทั้งหมด"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              เคลียร์ข้อมูล
+            </button>
           </div>
         </div>
       </div>
