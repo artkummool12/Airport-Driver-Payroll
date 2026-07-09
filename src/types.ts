@@ -24,6 +24,7 @@ export interface Job {
   createdDate: string; // Creation timestamp YYYY-MM-DD HH:MM
   isExternal?: boolean; // External job without tax deduction
   notes?: string;      // Remarks/notes
+  isPaid?: boolean;    // Transferred / Paid status
 }
 
 export interface VehicleRate {

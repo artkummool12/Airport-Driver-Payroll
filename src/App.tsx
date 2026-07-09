@@ -49,7 +49,8 @@ const mapJobFromDB = (j: any): Job => ({
   createdBy: j.created_by || '',
   createdDate: j.created_date || '',
   isExternal: !!j.is_external,
-  notes: j.notes || ''
+  notes: j.notes || '',
+  isPaid: !!j.is_paid
 });
 
 const mapJobToDB = (j: Job) => ({
@@ -68,7 +69,8 @@ const mapJobToDB = (j: Job) => ({
   created_by: j.createdBy || '',
   created_date: j.createdDate || '',
   is_external: !!j.isExternal,
-  notes: j.notes || ''
+  notes: j.notes || '',
+  is_paid: !!j.isPaid
 });
 
 const mapRateFromDB = (r: any): VehicleRate => ({

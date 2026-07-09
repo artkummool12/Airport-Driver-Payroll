@@ -125,6 +125,7 @@ export default function JobsView({
   const [notes, setNotes] = useState('');
   const [isCustomId, setIsCustomId] = useState(false);
   const [customId, setCustomId] = useState('');
+  const [isPaid, setIsPaid] = useState(false);
 
   // Handle Vehicle Code select changes to auto-populate default rate price
   const handleVehicleCodeChange = (code: string) => {
@@ -296,6 +297,7 @@ export default function JobsView({
     setPenalty(0);
     setIsExternal(false);
     setNotes('');
+    setIsPaid(false);
     setIsCustomId(false);
     setCustomId('');
     setIsFormOpen(true);
@@ -334,6 +336,7 @@ export default function JobsView({
     setPenalty(job.penalty);
     setIsExternal(!!job.isExternal);
     setNotes(job.notes || '');
+    setIsPaid(!!job.isPaid);
     setIsFormOpen(true);
   };
 
@@ -372,7 +375,8 @@ export default function JobsView({
       createdBy: currentUserEmail,
       createdDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
       isExternal,
-      notes: notes.trim() || undefined
+      notes: notes.trim() || undefined,
+      isPaid
     };
 
     await onSaveJob(finalJob);
@@ -629,6 +633,11 @@ export default function JobsView({
                               {job.isExternal && (
                                 <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-1 py-0.2 rounded border border-rose-100 uppercase tracking-wider font-sans">
                                   งานนอก (ไม่หักภาษี)
+                                </span>
+                              )}
+                              {job.isPaid && (
+                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100 uppercase tracking-wider font-sans">
+                                  ✅ โอนแล้ว
                                 </span>
                               )}
                             </div>
@@ -1130,19 +1139,38 @@ export default function JobsView({
               </div>
 
               {/* External Job toggle with styled container */}
-              <div className="flex items-center gap-3 bg-rose-50/30 p-3.5 rounded-2xl border border-rose-100/50">
-                <input
-                  type="checkbox"
-                  id="form-job-is-external"
-                  checked={isExternal}
-                  onChange={(e) => setIsExternal(e.target.checked)}
-                  className="h-4 w-4 rounded text-rose-600 focus:ring-rose-500 border-rose-300 cursor-pointer"
-                />
-                <div className="space-y-0.5 cursor-pointer" onClick={() => setIsExternal(!isExternal)}>
-                  <label htmlFor="form-job-is-external" className="block text-xs font-bold text-rose-950 cursor-pointer font-sans">
-                    งานนอกแมนนวล (External Job - ไม่หักภาษี 5%)
-                  </label>
-                  <p className="text-[10px] text-rose-600 font-sans">เมื่อเลือกตัวเลือกนี้ ระบบจะไม่นำรายรับเที่ยววิ่งรอบนี้ไปประมวลผลหักภาษี 5%</p>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 bg-rose-50/30 p-3.5 rounded-2xl border border-rose-100/50">
+                  <input
+                    type="checkbox"
+                    id="form-job-is-external"
+                    checked={isExternal}
+                    onChange={(e) => setIsExternal(e.target.checked)}
+                    className="h-4 w-4 rounded text-rose-600 focus:ring-rose-500 border-rose-300 cursor-pointer"
+                  />
+                  <div className="space-y-0.5 cursor-pointer" onClick={() => setIsExternal(!isExternal)}>
+                    <label htmlFor="form-job-is-external" className="block text-xs font-bold text-rose-950 cursor-pointer font-sans">
+                      งานนอกแมนนวล (External Job - ไม่หักภาษี 5%)
+                    </label>
+                    <p className="text-[10px] text-rose-600 font-sans">เมื่อเลือกตัวเลือกนี้ ระบบจะไม่นำรายรับเที่ยววิ่งรอบนี้ไปประมวลผลหักภาษี 5%</p>
+                  </div>
+                </div>
+
+                {/* Paid Status toggle */}
+                <div className="flex items-center gap-3 bg-emerald-50/30 p-3.5 rounded-2xl border border-emerald-100/50">
+                  <input
+                    type="checkbox"
+                    id="form-job-is-paid"
+                    checked={isPaid}
+                    onChange={(e) => setIsPaid(e.target.checked)}
+                    className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 border-emerald-300 cursor-pointer"
+                  />
+                  <div className="space-y-0.5 cursor-pointer" onClick={() => setIsPaid(!isPaid)}>
+                    <label htmlFor="form-job-is-paid" className="block text-xs font-bold text-emerald-950 cursor-pointer font-sans">
+                      สถานะการเงิน: โอนแล้ว / จ่ายแล้ว
+                    </label>
+                    <p className="text-[10px] text-emerald-600 font-sans">เลือกว่างานนี้ได้รับเงินเรียบร้อยแล้วหรือไม่</p>
+                  </div>
                 </div>
               </div>
 

@@ -9,5 +9,8 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_external BOOLEAN DEFAULT FALSE;
 -- 2. เพิ่มฟิลด์ 'notes' สำหรับระบุหมายเหตุ/ข้อตกลงแมนนวลเพิ่มเติม
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS notes TEXT;
 
+-- 3. เพิ่มฟิลด์ 'is_paid' เพื่อระบุสถานะว่าได้รับเงิน/โอนแล้วหรือไม่
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE;
+
 -- ตรวจสอบโครงสร้างตารางหลังแก้ไข (ตัวเลือกเสริม):
 -- SELECT * FROM jobs LIMIT 1;
